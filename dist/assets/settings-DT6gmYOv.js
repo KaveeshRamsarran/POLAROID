@@ -1,0 +1,1 @@
+const e="polaroid.settings.v1";function s(){const t={sensitivity:1,master:.65,music:.35,effects:.8,brightness:1.2,fov:67,quality:"high",retroEffects:!0,shake:.35,subtitles:!0,blur:!1,visualWarnings:!0};try{return{...t,...JSON.parse(localStorage.getItem(e)||"{}")}}catch{return t}}export{e as S,s as r};

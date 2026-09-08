@@ -1,3 +1,4 @@
+import { createAnalogPresentation } from "../shared/analog-presentation.js";
 import * as THREE from "three";
 import { buildCinema } from "./world.js";
 import { CinemaSound } from "./audio.js";
@@ -62,6 +63,7 @@ const camera = new THREE.PerspectiveCamera(
 );
 camera.rotation.order = "YXZ";
 const renderer = createRenderer(canvas),
+  presentation = createAnalogPresentation(renderer),
   world = buildCinema(scene, state),
   audio = new CinemaSound();
 const weaponScene = new THREE.Scene(),
@@ -75,6 +77,12 @@ weaponScene.add(new THREE.HemisphereLight("#e8dcc3", "#443c2e", 2.3));
 const cameraModel = world.makeCamera(weaponScene);
 cameraModel.scale.setScalar(0.72);
 const flashlight = new THREE.SpotLight("#efdfb7", 18, 22, 0.65, 0.65, 1.5);
+flashlight.castShadow = true;
+flashlight.shadow.mapSize.set(1024, 1024);
+flashlight.shadow.bias = -0.0003;
+flashlight.shadow.normalBias = 0.015;
+flashlight.shadow.camera.near = 0.15;
+flashlight.shadow.camera.far = 22;
 flashlight.position.set(0, 0, 0);
 flashlight.target.position.set(0, 0, -5);
 camera.add(flashlight, flashlight.target);
@@ -89,6 +97,8 @@ function on(target, event, fn, options) {
   listeners.push(() => target.removeEventListener(event, fn, options));
 }
 function applySettings() {
+  presentation.configure(settings);
+  renderer.shadowMap.enabled = settings.quality !== "low";
   audio.set(settings);
   renderer.setPixelRatio(
     Math.min(devicePixelRatio, settings.quality === "low" ? 1 : 1.5),
@@ -96,7 +106,6 @@ function applySettings() {
   renderer.toneMappingExposure = settings.brightness;
   camera.fov = settings.fov;
   camera.updateProjectionMatrix();
-  $("#grain").style.opacity = settings.quality === "low" ? "0" : ".015";
 }
 applySettings();
 {
@@ -240,7 +249,7 @@ function settingsPanel() {
       )
       .join(
         "",
-      )}<label>Graphics <select data-setting="quality"><option value="high">High</option><option value="low">Reduced effects</option></select></label><p><label><input type="checkbox" data-setting="subtitles" ${settings.subtitles ? "checked" : ""}> Subtitles</label></p><p><label><input type="checkbox" data-setting="visualWarnings" ${settings.visualWarnings ? "checked" : ""}> Visual projector warnings</label></p></div>`,
+      )}<label>Graphics <select data-setting="quality"><option value="high">High</option><option value="low">Reduced effects</option></select></label><p><label><input type="checkbox" data-setting="retroEffects" ${settings.retroEffects !== false ? "checked" : ""}> Analog picture</label></p><p><label><input type="checkbox" data-setting="subtitles" ${settings.subtitles ? "checked" : ""}> Subtitles</label></p><p><label><input type="checkbox" data-setting="visualWarnings" ${settings.visualWarnings ? "checked" : ""}> Visual projector warnings</label></p></div>`,
     [],
     true,
   );
@@ -1222,11 +1231,12 @@ function frame(now) {
     state.projector.remaining,
     mode !== "playing",
   );
-  renderer.autoClear = true;
-  renderer.render(scene, camera);
-  renderer.autoClear = false;
-  renderer.clearDepth();
-  if (started) renderer.render(weaponScene, weaponCamera);
+  presentation.render(
+    scene,
+    camera,
+    started ? weaponScene : null,
+    weaponCamera,
+  );
   hud();
   requestAnimationFrame(frame);
 }
@@ -1317,6 +1327,7 @@ on(window, "pagehide", () => {
   audio.dispose();
   releaseScene(scene);
   releaseScene(weaponScene);
+  presentation.dispose();
   renderer.dispose();
   listeners.forEach((off) => off());
 });

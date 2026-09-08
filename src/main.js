@@ -1,4 +1,5 @@
 import "./style.css";
+import { createAnalogPresentation } from "./shared/analog-presentation.js";
 import { createRenderer, releaseScene } from "./shared/runtime.js";
 import * as THREE from "three";
 import { buildWorld } from "./world.js";
@@ -33,6 +34,7 @@ try {
     '<div class="loading-brand">POLAROID</div><p>WebGL is unavailable. Please open the game in a desktop browser with hardware acceleration.</p>';
   throw e;
 }
+const presentation = createAnalogPresentation(renderer);
 renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
@@ -94,6 +96,7 @@ let settings = {
   brightness: 1.2,
   fov: 67,
   quality: "high",
+  retroEffects: true,
   shake: 0.35,
   subtitles: true,
   blur: false,
@@ -181,6 +184,7 @@ function objective() {
   objectiveTimer = 9;
 }
 function applySettings() {
+  presentation.configure(settings);
   camera.fov = settings.fov;
   camera.updateProjectionMatrix();
   weaponCamera.fov = settings.fov;
@@ -420,7 +424,7 @@ function openSettings(fromPause = false) {
         )
         .join(
           "",
-        )}<label class="setting">Graphics quality<select id="set-quality" aria-label="Graphics quality">${["low", "medium", "high"].map((v) => `<option value="${v}" ${settings.quality === v ? "selected" : ""}>${v.toUpperCase()}</option>`).join("")}</select></label><label class="setting">Subtitles<input type="checkbox" id="set-subtitles" ${settings.subtitles ? "checked" : ""}></label><label class="setting">Motion softness<input type="checkbox" id="set-blur" ${settings.blur ? "checked" : ""}></label></div><p class="small">Adjust brightness until you can distinguish the corridor from its shadows. Changes are saved automatically.</p>`,
+        )}<label class="setting">Graphics quality<select id="set-quality" aria-label="Graphics quality">${["low", "medium", "high"].map((v) => `<option value="${v}" ${settings.quality === v ? "selected" : ""}>${v.toUpperCase()}</option>`).join("")}</select></label><label class="setting">Subtitles<input type="checkbox" id="set-subtitles" ${settings.subtitles ? "checked" : ""}></label><label class="setting">Analog picture<input type="checkbox" id="set-retroEffects" ${settings.retroEffects !== false ? "checked" : ""}></label><label class="setting">Motion softness<input type="checkbox" id="set-blur" ${settings.blur ? "checked" : ""}></label></div><p class="small">Adjust brightness until you can distinguish the corridor from its shadows. Changes are saved automatically.</p>`,
     ),
   );
   for (const id of Object.keys(settings)) {
@@ -1263,13 +1267,12 @@ function animate(now) {
     cameraModel.visible = false;
   } else if (mode === "playing") updatePlaying(dt);
   updateLights(dt);
-  renderer.render(scene, camera);
-  if (cameraModel.visible) {
-    renderer.autoClear = false;
-    renderer.clearDepth();
-    renderer.render(weaponScene, weaponCamera);
-    renderer.autoClear = true;
-  }
+  presentation.render(
+    scene,
+    camera,
+    cameraModel.visible ? weaponScene : null,
+    weaponCamera,
+  );
   if (now - lastSecond > 1000) {
     document.documentElement.dataset.fps = String(Math.round(1 / dt));
     lastSecond = now;
@@ -1460,6 +1463,7 @@ window.addEventListener("pagehide", () => {
   audio.ctx?.close();
   releaseScene(scene);
   releaseScene(weaponScene);
+  presentation.dispose();
   renderer.dispose();
 });
 window.addEventListener("pageshow", (event) => {

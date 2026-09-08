@@ -4,6 +4,10 @@
 
 A playable first-person psychological horror anthology for desktop browsers. Choose **Chapter 01 - Blackwood House** or **Chapter 02 - The Last Showing** in the same POLAROID application. Both share its tactile camera, sculpted player hand, photographic identity and settings, with separate story saves.
 
+## Visual presentation
+
+A restrained analog picture pairs muted colors, gentle highlight spill and a slightly softer scene with clear sans-serif titles and subtitles. Both chapters share the treatment; disable **Analog picture** in settings for the clean render, or select reduced effects. Grain remains at 0.015 or below. The cinema figures have civilian jackets, shirts, trousers and more defined faces; contact shading and flashlight shadows ground the furniture.
+
 ## Play
 
 The supplied standalone build can be started with **Start-Polaroid.cmd** on Windows, or `node play.mjs` on any platform with Node.js installed. Open **http://127.0.0.1:3000**. The standalone build needs no package installation.
@@ -79,9 +83,12 @@ npm run test:progression
 npm run test:death
 npm run test:polish
 npm run test:characters
+npm run test:analog-style
 ```
 
 Browser tests require the development server and an installed Google Chrome. They create isolated browser profiles and do not use or modify your normal browser data.
+
+The analog presentation check also works against the standalone build. It verifies visible scene pixels, shader compilation, typography and the shared effects toggle in both chapters, and saves menu, environment and character screenshots.
 
 The character test also requires Vite. It checks the actual hand and Observer joint hierarchies, door lettering removal, foot clearance, walking/chase contacts, and settling to idle; it saves hand close-ups and walking poses to `artifacts/`.
 

@@ -24,3 +24,7 @@ artifacts/*
 !artifacts/cinema-auditorium.png
 !artifacts/cinema-archive.png
 !artifacts/cinema-mounted-lights.png
+!artifacts/analog-menu.png
+!artifacts/analog-cinema.png
+!artifacts/analog-blackwood.png
+!artifacts/analog-patron.png

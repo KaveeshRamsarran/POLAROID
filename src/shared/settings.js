@@ -8,6 +8,7 @@ export function readSettings() {
     brightness: 1.2,
     fov: 67,
     quality: "high",
+    retroEffects: true,
     shake: 0.35,
     subtitles: true,
     blur: false,

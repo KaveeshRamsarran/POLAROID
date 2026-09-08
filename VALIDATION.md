@@ -1,5 +1,14 @@
 # Validation
 
+## Analog presentation / September 2026
+
+- Shared scene presentation uses an HDR target capped at 900 vertical pixels, two-sample antialiasing, restrained color separation, highlight spill, desaturation and shadow/highlight grading. HUD text and captured prints remain sharp. No animated tape wobble or added hiss.
+- Analog picture can be disabled independently and is bypassed on low graphics. Its setting follows the player between chapters. Grain remains at 0.015 when enabled and zero when disabled.
+- Browser checks assert actual visible scene pixels (catching shader failures), no shader-console errors, the intended subtitle font, both chapter renders and the shared effect toggle.
+- Cinema characters use shaped continuous head meshes, subdued facial shading, close-cropped hair, fitted shirt fronts, jacket lapels, pockets, cuffs and shoe soles while retaining the existing gait and story positions. Furniture uses contact shading, with flashlight shadows on higher graphics.
+- Both chapter progression scripts passed through their endings with the new presentation, alongside anthology launch/continue, independent-save and shared-settings checks. These are automated fixture-assisted runs, not timed human playtests.
+- Direction reference: [Rayll's official Fears to Fathom page](https://rayll.itch.io/fears-to-fathom-ep4). The implementation uses POLAROID's own models, artwork and materials.
+
 ## Booth door and fixture fix / September 2026
 
 - Reproduced the closed booth-door failure from inside using a saved investigation checkpoint: the original build offered no interaction.

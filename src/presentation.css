@@ -1,0 +1,201 @@
+/* Shared anthology direction: ordinary places, muted light, plain readable UI. */
+html:root {
+  --paper: #eeeae0;
+  --muted: #a5a5a0;
+  --red: #b95149;
+  font-family: Arial, Helvetica, sans-serif;
+  color: var(--paper);
+}
+body h1,
+body .loading-brand {
+  font-family: "Arial Black", Arial, Helvetica, sans-serif;
+  font-weight: 900;
+  letter-spacing: -0.045em;
+  text-shadow:
+    1px 1px 0 #f0ddd518,
+    0 3px 15px #0008;
+}
+body .title-echo {
+  display: none;
+}
+body .anthology-title h1 {
+  font-size: clamp(60px, 7.3vw, 112px);
+  letter-spacing: -0.045em;
+}
+body .anthology-title p,
+body .tagline,
+body .chapter-card p,
+body .story-launch p {
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 400;
+  color: #d4d1c9;
+}
+body .anthology-title p {
+  font-size: clamp(19px, 1.7vw, 25px);
+  line-height: 1.55;
+}
+body .chapter-name h2 {
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 800;
+  font-size: clamp(22px, 2.2vw, 32px);
+  letter-spacing: -0.025em;
+}
+body .chapter-name small {
+  color: #c8796b;
+}
+body .chapter-card p {
+  font-size: 15px;
+}
+body .chapter-actions {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+}
+body .chapter-actions a {
+  border-bottom-color: #b9b5ab4d;
+}
+body .chapter-card.selected {
+  text-shadow: 0 2px 12px #000;
+}
+body .menu-backgrounds img {
+  filter: saturate(0.7) brightness(0.87);
+}
+body .menu-shade {
+  background:
+    linear-gradient(90deg, #050709cf, #05070938 48%, #050709b8 77%, #050709d9),
+    linear-gradient(
+      0deg,
+      #050709c2,
+      transparent 35%,
+      transparent 75%,
+      #0507096b
+    );
+}
+body .anthology header,
+body .anthology footer,
+body .eyebrow,
+body .chapter-progress {
+  color: #bbb9b1;
+}
+body .story-launch h1 {
+  font-size: clamp(34px, 4vw, 54px);
+  letter-spacing: -0.035em;
+}
+body .story-launch .eyebrow {
+  justify-content: center;
+  color: #c8796b;
+}
+body .story-launch {
+  background: #080b0df5;
+}
+body #vignette {
+  background: radial-gradient(
+    ellipse at 50% 47%,
+    transparent 30%,
+    #05070929 77%,
+    #03040688 100%
+  );
+}
+body #hud {
+  font-family: Arial, Helvetica, sans-serif;
+}
+body #phase {
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: #bbb9b1;
+}
+body #room-name {
+  font-size: 12px;
+  letter-spacing: 0.09em;
+  font-weight: 600;
+  color: #e4e1d8;
+}
+body #objective,
+body.cinema-game #objective {
+  font-size: 14px;
+  line-height: 1.55;
+  max-width: 420px;
+  color: #e0ded6;
+  text-shadow: 0 2px 5px #000;
+}
+body #interaction {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.45;
+  background: transparent;
+  padding: 8px 14px;
+  text-shadow:
+    0 2px 3px #000,
+    0 0 12px #000;
+}
+body #subtitle {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: clamp(18px, 1.45vw, 22px);
+  line-height: 1.45;
+  font-weight: 500;
+  color: #f2efe7;
+  left: 17%;
+  right: 17%;
+  text-shadow:
+    0 2px 3px #000,
+    0 0 12px #000;
+}
+body .hud-bottom,
+body .hud-bottom button {
+  font-size: 11px;
+  letter-spacing: 0.045em;
+}
+body #control-hint {
+  opacity: 0.48;
+}
+body .projector-status {
+  color: #d7d1c3;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  line-height: 1.6;
+  text-shadow: 0 2px 5px #000;
+}
+body .panel h2,
+body.cinema-game #overlay-content h2 {
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  font-size: 30px;
+}
+body .cinema-note,
+body .panel p,
+body.cinema-game #overlay-content p {
+  font-family: Arial, Helvetica, sans-serif;
+  line-height: 1.65;
+  color: #d4d1c9;
+}
+body .cinema-controls button,
+body .filled-button {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.045em;
+}
+body .overlay,
+body.cinema-game .overlay {
+  background: #0b0e10ed;
+}
+@media (max-width: 800px) {
+  body .anthology-title h1 {
+    font-size: clamp(44px, 10vw, 76px);
+  }
+  body #objective,
+  body.cinema-game #objective {
+    max-width: 55vw;
+    font-size: 12px;
+  }
+  body #subtitle {
+    left: 8%;
+    right: 8%;
+  }
+  body #interaction {
+    width: 80%;
+  }
+}

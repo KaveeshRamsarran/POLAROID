@@ -28,7 +28,7 @@ export function buildCinema(scene, state) {
     mats[key] = new THREE.MeshStandardMaterial({
       color,
       roughness: 0.84,
-      metalness: ["metal", "brass"].includes(key) ? 0.6 : 0,
+      metalness: key === "metal" ? 0.5 : key === "brass" ? 0.32 : 0,
     });
   for (const kind of surfaceKinds) {
     Object.assign(mats[kind], createSurface(kind));
@@ -66,6 +66,38 @@ export function buildCinema(scene, state) {
     reelWheels = [],
     doors = [];
   const nav = navigation(solids, state.doors);
+  const shadowCanvas = document.createElement("canvas");
+  shadowCanvas.width = shadowCanvas.height = 64;
+  const shadowContext = shadowCanvas.getContext("2d");
+  const falloff = shadowContext.createRadialGradient(32, 32, 3, 32, 32, 31);
+  falloff.addColorStop(0, "rgba(0,0,0,.42)");
+  falloff.addColorStop(0.5, "rgba(0,0,0,.22)");
+  falloff.addColorStop(1, "rgba(0,0,0,0)");
+  shadowContext.fillStyle = falloff;
+  shadowContext.fillRect(0, 0, 64, 64);
+  const contactMaterial = new THREE.MeshBasicMaterial({
+    map: new THREE.CanvasTexture(shadowCanvas),
+    transparent: true,
+    depthWrite: false,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+  });
+  const contactGeometry = new THREE.PlaneGeometry(1, 1);
+  function contactShadow(x, z, w, d, y = 0, parent = scene) {
+    const shadow = mesh(
+      contactGeometry,
+      contactMaterial,
+      x,
+      y + 0.012,
+      z,
+      parent,
+    );
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.scale.set(w, d, 1);
+    shadow.castShadow = false;
+    shadow.receiveShadow = false;
+    return shadow;
+  }
   function solid(w, h, d, x, y, z, mat = mats.wall, door) {
     const m = box(w, h, d, x, y, z, mat);
     solids.push({
@@ -541,6 +573,7 @@ export function buildCinema(scene, state) {
         seat = new THREE.Group();
       scene.add(seat);
       seat.position.set(x, 0, z);
+      contactShadow(x, z, 1.2, 1.25);
       const back = round(
         0.72,
         0.9,
@@ -819,6 +852,14 @@ export function buildCinema(scene, state) {
     box(0.05, 0.055, 17.6, x, 1.13, 13, mats.brass);
   }
 
+  for (const [x, z, w, d] of [
+    [-5, 20.8, 5.7, 2.1],
+    [8.25, 16.9, 2, 6.7],
+    [-8.8, 16.5, 1.8, 4.2],
+    [-6.7, 16.5, 1.6, 2.8],
+    [-18, -9.2, 3.6, 1.6],
+  ])
+    contactShadow(x, z, w, d);
   // Booth, reels and maintenance bench, with space around the actual equipment.
   solid(1.3, 0.9, 1.1, 13.3, 4.05, -4.5, mats.metal);
   round(0.8, 0.9, 0.6, 13.3, 4.95, -4.5, mats.dark);
@@ -1010,6 +1051,14 @@ export function buildCinema(scene, state) {
     g.userData.limbs = [];
     const cloth = mats.fabric.clone();
     cloth.color.set(colour);
+    cloth.roughness = 0.97;
+    const trousers = mats.fabric.clone();
+    trousers.color.set("#373c3d");
+    trousers.roughness = 1;
+    const shirt = mats.fabric.clone();
+    shirt.color.set("#a99f89");
+    shirt.roughness = 0.96;
+    contactShadow(0, 0, 0.7, 0.58, 0, g);
     const body = new THREE.Group();
     g.add(body);
     g.userData.body = body;
@@ -1020,7 +1069,7 @@ export function buildCinema(scene, state) {
           new THREE.Vector2(0.2, 1.05),
           new THREE.Vector2(0.17, 1.3),
           new THREE.Vector2(0.24, 1.47),
-          new THREE.Vector2(0.12, 1.58),
+          new THREE.Vector2(0.065, 1.58),
         ],
         16,
       ),
@@ -1030,38 +1079,157 @@ export function buildCinema(scene, state) {
       0,
       body,
     );
-    torso.scale.z = 0.65;
+    torso.scale.z = 0.72;
+    // A worn civilian jacket, with a shirt, lapels, pockets and separate trousers.
+    const shirtFront = new THREE.BufferGeometry();
+    const shirtVertices = [],
+      shirtIndices = [];
+    for (const [i, [y, z, halfWidth]] of [
+      [1.25, 0.133, 0.035],
+      [1.3, 0.128, 0.035],
+      [1.47, 0.177, 0.05],
+      [1.56, 0.075, 0.04],
+    ].entries()) {
+      shirtVertices.push(-halfWidth, y, z, halfWidth, y, z);
+      if (i)
+        shirtIndices.push(
+          i * 2 - 2,
+          i * 2 - 1,
+          i * 2,
+          i * 2 - 1,
+          i * 2 + 1,
+          i * 2,
+        );
+    }
+    shirtFront.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(shirtVertices, 3),
+    );
+    shirtFront.setIndex(shirtIndices);
+    shirtFront.computeVertexNormals();
+    mesh(shirtFront, shirt, 0, 0, 0, body);
+    for (const side of [-1, 1]) {
+      const lapel = new THREE.BufferGeometry();
+      lapel.setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute(
+          [
+            side * 0.065,
+            1.54,
+            0.102,
+            side * 0.125,
+            1.46,
+            0.146,
+            side * 0.045,
+            1.3,
+            0.138,
+          ],
+          3,
+        ),
+      );
+      lapel.setIndex(side === -1 ? [0, 1, 2] : [2, 1, 0]);
+      lapel.computeVertexNormals();
+      mesh(lapel, cloth, 0, 0, 0, body);
+      round(0.085, 0.105, 0.008, side * 0.125, 1.115, 0.14, cloth, body, 0.003);
+      link(
+        [side * 0.08, 1.17, 0.16],
+        [side * 0.165, 1.17, 0.16],
+        0.0025,
+        mats.dark,
+        body,
+      );
+      ball(0.083, 0.078, 0.09, side * 0.19, 1.425, 0, cloth, body);
+    }
+    for (const y of [1.16, 1.26, 1.36])
+      ball(0.006, 0.006, 0.003, 0, y, 0.145, mats.dark, body);
+    cylinder(0.058, 0.14, 0, 1.6, 0, mats.skin, body);
     const head = new THREE.Group();
     head.position.y = 1.65;
     body.add(head);
     g.userData.head = head;
-    ball(0.125, 0.19, 0.13, 0, 0.09, 0, mats.skin, head);
-    ball(0.13, 0.1, 0.13, 0, 0.22, -0.015, mats.dark, head);
-    ball(0.024, 0.04, 0.035, 0, 0.085, 0.115, mats.skin, head);
+    // One continuous head surface: shaped jaw, eye sockets and nose bridge.
+    // Close-cropped hair and facial shadows are vertex colour, not floating
+    // balls or painted-on eyebrows. The face stays deliberately indistinct.
+    const faceGeometry = new THREE.SphereGeometry(1, 64, 48);
+    const vertices = faceGeometry.attributes.position;
+    const faceColours = [];
+    const gaussian = (x, y, cx, cy, sx, sy) =>
+      Math.exp(-(((x - cx) / sx) ** 2) - ((y - cy) / sy) ** 2);
+    for (let i = 0; i < vertices.count; i++) {
+      const nx = vertices.getX(i),
+        ny = vertices.getY(i),
+        nz = vertices.getZ(i);
+      const y = 0.065 + ny * 0.155;
+      const x = nx * 0.105 * (1 - 0.16 * Math.max(0, -ny));
+      const front = THREE.MathUtils.smoothstep(nz, 0.2, 0.72);
+      const sockets =
+        gaussian(x, y, -0.039, 0.102, 0.027, 0.018) +
+        gaussian(x, y, 0.039, 0.102, 0.027, 0.018);
+      const nose = gaussian(x, y, 0, 0.078, 0.015, 0.039);
+      const mouth = gaussian(x, y, 0, 0.022, 0.034, 0.0035);
+      let z = nz * 0.105;
+      z += front * (0.033 * nose - 0.008 * sockets - 0.003 * mouth);
+      const hairline =
+        0.005 + 0.156 * THREE.MathUtils.smoothstep(nz, -0.5, 0.5);
+      const hair = THREE.MathUtils.smoothstep(
+        y,
+        hairline - 0.004,
+        hairline + 0.003,
+      );
+      const shade = 1 - front * (0.27 * sockets + 0.3 * mouth);
+      faceColours.push(
+        THREE.MathUtils.lerp(shade, 0.115, hair),
+        THREE.MathUtils.lerp(shade * 0.96, 0.12, hair),
+        THREE.MathUtils.lerp(shade * 0.94, 0.115, hair),
+      );
+      vertices.setXYZ(i, x, y, z);
+    }
+    faceGeometry.setAttribute(
+      "color",
+      new THREE.Float32BufferAttribute(faceColours, 3),
+    );
+    faceGeometry.computeVertexNormals();
+    const skin = mats.skin.clone();
+    skin.color.set("#ac9080");
+    skin.vertexColors = true;
+    skin.roughness = 0.96;
+    mesh(faceGeometry, skin, 0, 0, 0, head);
     for (const side of [-1, 1]) {
-      ball(0.015, 0.009, 0.012, side * 0.047, 0.12, 0.116, mats.dark, head);
+      ball(0.012, 0.028, 0.019, side * 0.099, 0.065, -0.008, mats.skin, head);
+      ball(0.009, 0.0035, 0.004, side * 0.039, 0.103, 0.09, mats.dark, head);
       const arm = new THREE.Group();
       arm.position.set(side * 0.23, 1.43, 0);
       body.add(arm);
-      link([0, 0, 0], [side * 0.04, -0.32, 0], 0.055, cloth, arm);
+      link([0, 0, 0], [side * 0.04, -0.32, 0], 0.075, cloth, arm);
       const elbow = new THREE.Group();
       elbow.position.set(side * 0.04, -0.32, 0);
       arm.add(elbow);
-      link([0, 0, 0], [side * 0.025, -0.3, 0.015], 0.043, cloth, elbow);
+      link([0, 0, 0], [side * 0.025, -0.3, 0.015], 0.059, cloth, elbow);
       ball(0.045, 0.09, 0.024, side * 0.025, -0.34, 0.02, mats.skin, elbow);
+      cylinder(0.061, 0.06, side * 0.023, -0.29, 0.014, cloth, elbow);
+      ball(0.025, 0.035, 0.024, side * 0.055, -0.34, 0.04, mats.skin, elbow);
       g.userData.limbs.push({ mesh: arm, joint: elbow, type: "arm", side });
       const leg = new THREE.Group();
       leg.position.set(side * 0.12, 0.93, 0);
       g.add(leg);
-      link([0, 0, 0], [side * 0.02, -0.43, 0.06], 0.075, cloth, leg);
+      link([0, 0, 0], [side * 0.02, -0.43, 0.06], 0.085, trousers, leg);
       const knee = new THREE.Group();
       knee.position.set(side * 0.02, -0.43, 0.06);
       leg.add(knee);
-      link([0, 0, 0], [side * 0.03, -0.41, -0.06], 0.053, cloth, knee);
+      link([0, 0, 0], [side * 0.03, -0.41, -0.06], 0.065, trousers, knee);
       const foot = new THREE.Group();
       foot.position.set(side * 0.03, -0.41, -0.06);
       knee.add(foot);
-      ball(0.07, 0.06, 0.14, 0, -0.025, 0.06, mats.dark, foot);
+      ball(0.074, 0.058, 0.145, 0, -0.025, 0.06, mats.dark, foot);
+      round(0.14, 0.025, 0.26, 0, -0.062, 0.06, mats.black, foot, 0.009);
+      for (let i = 0; i < 3; i++)
+        link(
+          [-0.04, 0.016, 0.04 + i * 0.025],
+          [0.04, 0.016, 0.04 + i * 0.025],
+          0.003,
+          mats.wood,
+          foot,
+        );
       g.userData.limbs.push({
         mesh: leg,
         joint: knee,

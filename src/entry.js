@@ -1,6 +1,7 @@
 import { SETTINGS_KEY, readSettings } from "./shared/settings.js";
 import "./style.css";
 import "./anthology.css";
+import "./presentation.css";
 const chapter = new URLSearchParams(location.search).get("chapter");
 if (chapter === "blackwood") await import("./main.js");
 else if (chapter === "last-showing") await import("./cinema/game.js");
@@ -82,14 +83,20 @@ else {
             '"></label>',
         )
         .join("") +
-        '<label class="setting">GRAPHICS<select data-setting="quality"><option value="high">High</option><option value="low">Reduced effects</option></select></label><p>Settings are shared by both chapters.</p>',
+        '<label class="setting">ANALOG PICTURE<input data-setting="retroEffects" type="checkbox" ' +
+        (settings.retroEffects !== false ? "checked" : "") +
+        '></label><label class="setting">GRAPHICS<select data-setting="quality"><option value="high">High</option><option value="low">Reduced effects</option></select></label><p>Settings are shared by both chapters.</p>',
     );
     document.querySelector('[data-setting="quality"]').value = settings.quality;
     document.querySelectorAll("[data-setting]").forEach(
       (input) =>
         (input.oninput = () => {
           settings[input.dataset.setting] =
-            input.type === "range" ? Number(input.value) : input.value;
+            input.type === "checkbox"
+              ? input.checked
+              : input.type === "range"
+                ? Number(input.value)
+                : input.value;
           localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
         }),
     );
