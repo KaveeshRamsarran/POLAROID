@@ -1126,12 +1126,6 @@ function updatePlaying(dt) {
     floorAt(ai.position.x, ai.position.z) ?? 0,
     ai.position.z,
   );
-  world.observer.rotation.y = Math.atan2(
-    player.x - ai.position.x,
-    player.z - ai.position.z,
-  );
-  world.observer.rotation.z = Math.sin(time * 2.5) * 0.035;
-  world.observer.userData.walking = ai.path.length > 0;
   world.observer.visible =
     n >= 2 &&
     (ai.state === "CHASING" ||
@@ -1150,6 +1144,7 @@ function updatePlaying(dt) {
     n >= 2 && distance(player, ai.position) < 14,
     ai.state === "CHASING",
     !lineOfSight(player, entitySource, world.solids),
+    world.observer.userData.footfallCount || 0,
   );
   heartbeat -= dt;
   if (heartbeat <= 0 && result.warning > 0.35) {

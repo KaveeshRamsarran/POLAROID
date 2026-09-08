@@ -1,3 +1,5 @@
+import { createCameraHand } from "./hand.js";
+import { updateObserverAnimation } from "./observer-animation.js";
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
@@ -445,17 +447,6 @@ export function buildWorld(scene) {
         mats.metal,
         pivot,
       );
-    sign(
-      label,
-      width / 2,
-      1.82,
-      0.098,
-      width - 0.3,
-      0.25,
-      0,
-      { size: 29 },
-      pivot,
-    );
     cylinder(
       0.032,
       0.22,
@@ -1792,6 +1783,7 @@ export function buildWorld(scene) {
       ball(0.08, 0.07, 0.09, a * 0.18, 1.57, 0, cloth, g);
       link([a * 0.22, 1.55, 0], [a * 0.32, 1.16, 0.035], 0.058, cloth, g);
       ball(0.06, 0.065, 0.06, a * 0.32, 1.16, 0.035, skin, g);
+      const forearmStart = g.children.length;
       link([a * 0.32, 1.16, 0.035], [a * 0.39, 0.72, 0.1], 0.043, skin, g);
       ball(0.045, 0.095, 0.023, a * 0.4, 0.67, 0.1, skin, g);
       for (let f = 0; f < 4; f++) {
@@ -1802,6 +1794,13 @@ export function buildWorld(scene) {
         ball(0.008, 0.011, 0.009, ...joint, skin, g);
       }
       link([a * 0.37, 0.7, 0.105], [a * 0.335, 0.63, 0.13], 0.012, skin, g);
+      const forearm = new THREE.Group();
+      forearm.position.set(a * 0.32, 1.16, 0.035);
+      for (const part of g.children.slice(forearmStart)) {
+        part.position.sub(forearm.position);
+        forearm.add(part);
+      }
+      g.add(forearm);
       const arm = new THREE.Group();
       arm.position.set(a * 0.22, 1.55, 0);
       for (const part of g.children.slice(armStart)) {
@@ -1809,12 +1808,28 @@ export function buildWorld(scene) {
         arm.add(part);
       }
       g.add(arm);
-      g.userData.limbs.push({ mesh: arm, side: a, type: "arm" });
+      g.userData.limbs.push({
+        mesh: arm,
+        joint: forearm,
+        side: a,
+        type: "arm",
+      });
       const legStart = g.children.length;
       link([a * 0.12, 0.93, 0], [a * 0.14, 0.5, 0.06], 0.073, cloth, g);
       ball(0.07, 0.065, 0.065, a * 0.14, 0.5, 0.06, cloth, g);
+      const shinStart = g.children.length;
       link([a * 0.14, 0.5, 0.06], [a * 0.17, 0.09, 0], 0.055, cloth, g);
-      ball(0.066, 0.06, 0.14, a * 0.17, 0.065, 0.06, mats.dark, g);
+      const foot = new THREE.Group();
+      foot.position.set(a * 0.17, 0.09, 0);
+      g.add(foot);
+      ball(0.066, 0.06, 0.14, 0, -0.025, 0.06, mats.dark, foot);
+      const shin = new THREE.Group();
+      shin.position.set(a * 0.14, 0.5, 0.06);
+      for (const part of g.children.slice(shinStart)) {
+        part.position.sub(shin.position);
+        shin.add(part);
+      }
+      g.add(shin);
       const leg = new THREE.Group();
       leg.position.set(a * 0.12, 0.93, 0);
       for (const part of g.children.slice(legStart)) {
@@ -1822,7 +1837,13 @@ export function buildWorld(scene) {
         leg.add(part);
       }
       g.add(leg);
-      g.userData.limbs.push({ mesh: leg, side: a, type: "leg" });
+      g.userData.limbs.push({
+        mesh: leg,
+        joint: shin,
+        foot,
+        side: a,
+        type: "leg",
+      });
     }
     const hairCap = mesh(
       new THREE.SphereGeometry(1, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.5),
@@ -1868,6 +1889,14 @@ export function buildWorld(scene) {
       skirt.scale.z = 0.65;
       ball(0.15, 0.22, 0.13, 0, 1.99, -0.02, mats.dark, g);
     }
+    const body = new THREE.Group();
+    const legs = g.userData.limbs
+      .filter((l) => l.type === "leg")
+      .map((l) => l.mesh);
+    for (const part of [...g.children])
+      if (!legs.includes(part)) body.add(part);
+    g.add(body);
+    g.userData.body = body;
     scene.add(g);
     return g;
   }
@@ -1986,11 +2015,7 @@ export function buildWorld(scene) {
       -0.152,
       g,
     );
-    ball(0.074, 0.11, 0.05, 0.18, -0.025, 0.025, mats.skin, g);
-    for (let i = 0; i < 4; i++) {
-      ball(0.065, 0.016, 0.018, 0.12, -0.04 + i * 0.029, 0.116, mats.skin, g);
-    }
-    link([0.21, -0.09, 0.06], [0.34, -0.3, 0.12], 0.075, mats.fabric, g);
+    g.add(createCameraHand(mats));
     g.position.set(0.28, -0.28, -0.53);
     g.rotation.set(-0.13, -0.18, -0.05);
     return g;
@@ -2127,18 +2152,7 @@ export function buildWorld(scene) {
       });
     },
     update(dt, t, position, power, storm) {
-      observer.userData.head.rotation.z = -0.24 + Math.sin(t * 0.71) * 0.035;
-      observer.userData.head.rotation.y = Math.sin(t * 0.43) * 0.12;
-      observer.userData.head.rotation.x = 0.1 + Math.sin(t * 1.7) * 0.025;
-      for (const limb of observer.userData.limbs) {
-        if (limb.type === "arm")
-          limb.mesh.rotation.z =
-            limb.side * (0.06 + Math.sin(t * 1.3 + limb.side) * 0.025);
-        limb.mesh.rotation.x =
-          Math.sin(t * 5 + (limb.side * Math.PI) / 2) *
-          (limb.type === "arm" ? -0.12 : 0.16) *
-          (observer.userData.walking ? 1 : 0.1);
-      }
+      updateObserverAnimation(observer, dt, t, position, floorAt);
       rain.position.y = -((t * 6) % 3);
       for (const d of doors) {
         d.open = THREE.MathUtils.damp(d.open, d.target, 5, dt);

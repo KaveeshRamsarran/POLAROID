@@ -441,10 +441,13 @@ export class Soundscape {
     );
     if (!opening) this.tone(76, 0.23, 0.18, position, "sine", 42, 0.38);
   }
-  entity(dt, position, enabled, chasing, occluded) {
+  entity(dt, position, enabled, chasing, occluded, footfalls = null) {
     if (!this.ctx) return;
     const previous = this.entityPosition;
     this.entityPosition = { ...position };
+    const landed =
+      footfalls !== null && footfalls > (this.entityFootfalls ?? footfalls);
+    this.entityFootfalls = footfalls;
     this.breathTimer = (this.breathTimer ?? 2) - dt;
     if (!enabled) {
       this.entityDistance = 0;
@@ -455,7 +458,11 @@ export class Soundscape {
       : 0;
     this.entityDistance = (this.entityDistance ?? 0) + (moved < 1 ? moved : 0);
     const level = occluded ? 0.24 : 1;
-    if (this.entityDistance > (chasing ? 0.85 : 0.65)) {
+    if (
+      footfalls !== null
+        ? landed
+        : this.entityDistance > (chasing ? 0.85 : 0.65)
+    ) {
       this.entityDistance = 0;
       // Its tread is the same recording, slowed and dulled into something heavier.
       const step = this.step(

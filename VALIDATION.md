@@ -1,5 +1,7 @@
 # Validation
 
+- Character regression: all 19 doors have no lettering planes; the hand contains a continuous bounded skin mesh and five modeled digits. Actual joint hierarchies demonstrate knee flexion, feet lifting clear of the floor, walking/chase foot contacts, and no continued footsteps once idle. Close-up grip and three walking poses were visually inspected using isolated scene fixtures; the viewfinder was also checked in the live game.
+
 - Production build: passed (`npm run build`).
 - Unit tests: 12 passed, covering levels, collision, sight lines, photographic targeting, pathfinding, doors, AI memory, retreat, reaching a detected player, ritual ordering, save restoration, and objectives.
 - Browser smoke test: passed; title screen, start, actual photo capture/development, film consumption, and journal; no browser runtime errors.

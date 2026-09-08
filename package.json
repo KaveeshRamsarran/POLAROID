@@ -13,7 +13,8 @@
     "test:progression": "node scripts/progression.mjs",
     "test:death": "node scripts/death.mjs",
     "format": "prettier --write src scripts tests index.html vite.config.js package.json README.md",
-    "test:polish": "node scripts/polish.mjs"
+    "test:polish": "node scripts/polish.mjs",
+    "test:characters": "node scripts/characters.mjs"
   },
   "dependencies": {
     "three": "0.180.0"
