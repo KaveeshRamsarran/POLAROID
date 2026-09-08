@@ -1,0 +1,2 @@
+dist/** linguist-generated=true whitespace=-blank-at-eol
+*.cmd text eol=crlf

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#101a16" />
+    <meta
+      name="description"
+      content="POLAROID — A first-person psychological horror game. Some things only exist in photographs."
+    />
+    <title>POLAROID — What remains unseen</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  </head>
+  <body>
+    <canvas
+      id="world"
+      aria-label="First-person view of the abandoned house"
+      tabindex="0"
+    ></canvas>
+    <div id="grain"></div>
+    <div id="vignette"></div>
+    <div id="flash"></div>
+    <div id="danger"></div>
+    <main id="menu" class="screen">
+      <header class="masthead">
+        <a class="brand" href="#" aria-label="POLAROID home"
+          ><span class="aperture">◉</span> STILL / HERE</a
+        ><span class="edition">AN INTERACTIVE GHOST STORY <i></i> VOL. 01</span>
+      </header>
+      <section class="menu-content">
+        <div class="eyebrow">
+          <span class="red-dot"></span> A PSYCHOLOGICAL HORROR EXPERIENCE
+        </div>
+        <h1>
+          POLAROID<span class="title-echo" aria-hidden="true">POLAROID</span>
+        </h1>
+        <p class="tagline">Some things only exist<br />in photographs.</p>
+        <div class="menu-rule"></div>
+        <nav class="menu-actions" aria-label="Main menu">
+          <button id="new-game" class="primary">
+            <span class="button-number">01</span> NEW GAME
+            <span class="arrow">↗</span></button
+          ><button id="continue" disabled>
+            <span class="button-number">02</span> CONTINUE
+            <span id="save-label">NO SAVED MEMORY</span></button
+          ><button id="settings-open">
+            <span class="button-number">03</span> SETTINGS
+            <span class="arrow">↗</span></button
+          ><button id="credits-open">
+            <span class="button-number">04</span> CREDITS
+            <span class="arrow">↗</span>
+          </button>
+        </nav>
+      </section>
+      <aside class="scene-caption">
+        <span class="record-dot"></span> BLACKWOOD HOUSE<span
+          class="caption-small"
+          >OCTOBER 17, 1997 · 02:14 AM</span
+        >
+      </aside>
+      <footer class="menu-footer">
+        <span class="headphone-icon" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M4 14v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="12" width="4" height="8" rx="2"/><rect x="17" y="12" width="4" height="8" rx="2"/></svg></span
+        ><span
+          >BEST EXPERIENCED WITH HEADPHONES<br /><small
+            >Dark room. Sound on. Look closer.</small
+          ></span
+        ><span class="footer-right"
+          >NOT EVERYTHING WANTS TO BE SEEN.<b>35mm / ∞</b></span
+        >
+      </footer>
+    </main>
+    <div id="hud" hidden>
+      <div class="hud-top">
+        <div>
+          <span class="eyebrow" id="phase">01 / DISCOVERY</span>
+          <div id="room-name">ENTRANCE HALL</div>
+        </div>
+        <button id="pause-button" aria-label="Pause game">Ⅱ</button>
+      </div>
+      <div id="crosshair"></div>
+      <div id="objective"></div>
+      <div id="interaction"></div>
+      <div id="subtitle" role="status" aria-live="polite"></div>
+      <div class="hud-bottom">
+        <button id="journal-button">
+          <kbd>J</kbd> JOURNAL <span id="evidence-count">0 / 4</span></button
+        ><span id="stance"></span>
+        <div class="resources">
+          <span id="battery">▰▰▰▰</span><span class="film-icon">▤</span
+          ><b id="film">08</b><small>EXPOSURES</small>
+        </div>
+      </div>
+      <div id="control-hint">
+        <span><kbd>W A S D</kbd> MOVE</span><span><kbd>MOUSE</kbd> LOOK</span
+        ><span><kbd>C</kbd> PHOTOGRAPH</span><span><kbd>E</kbd> INTERACT</span
+        ><span><kbd>F</kbd> LIGHT</span><span><kbd>SHIFT</kbd> RUN</span
+        ><span><kbd>CTRL</kbd> CROUCH</span>
+      </div>
+    </div>
+    <div id="viewfinder" hidden>
+      <div></div>
+      <span>AUTOFOCUS <i>+</i> 600</span>
+    </div>
+    <div id="photo-held" hidden>
+      <div class="print">
+        <div class="photo-window">
+          <img id="photo-image" alt="Your developing instant photograph" />
+          <div id="develop-layer"></div>
+        </div>
+        <div class="print-caption">
+          <span id="photo-title">EXPOSURE 01</span
+          ><small id="photo-note">DO NOT SHAKE</small>
+        </div>
+      </div>
+      <div class="photo-help">
+        <kbd>R</kbd> INSPECT · <kbd>Q</kbd> PUT AWAY<br /><small
+          >Evidence is kept automatically</small
+        >
+      </div>
+    </div>
+    <section id="overlay" class="screen overlay" hidden>
+      <div id="overlay-content"></div>
+    </section>
+    <div id="loading">
+      <div class="loading-brand">POLAROID</div>
+      <span>DEVELOPING THE DARKNESS</span>
+      <div class="loading-line"></div>
+    </div>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "name": "polaroid",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --configLoader native",
+    "build": "vite build --configLoader native",
+    "preview": "vite preview --host 127.0.0.1 --configLoader native",
+    "test": "node --test tests/*.test.js",
+    "test:smoke": "node scripts/smoke.mjs",
+    "test:systems": "node scripts/systems.mjs",
+    "test:progression": "node scripts/progression.mjs",
+    "test:death": "node scripts/death.mjs",
+    "format": "prettier --write src scripts tests index.html vite.config.js package.json README.md"
+  },
+  "dependencies": {
+    "three": "0.180.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.1",
+    "prettier": "^3.6.2",
+    "vite": "7.1.7"
+  }
+}
