@@ -1,8 +1,8 @@
 # POLAROID
 
-![POLAROID — Blackwood House](artifacts/menu.png)
+![POLAROID anthology](artifacts/anthology.png)
 
-A playable first-person psychological horror game built for desktop browsers. Its visual direction follows the supplied reference: damp green walls, exposed pipes, rusted doors, worn surfaces, cold fluorescent lighting, and deep shadows.
+A playable first-person psychological horror anthology for desktop browsers. Choose **Chapter 01 - Blackwood House** or **Chapter 02 - The Last Showing** in the same POLAROID application. Both share its tactile camera, sculpted player hand, photographic identity and settings, with separate story saves.
 
 ## Play
 
@@ -15,7 +15,7 @@ npm install
 npm run dev
 ```
 
-Open **http://127.0.0.1:3000**. Click **New Game** to enable sound and mouse capture. When browser mouse capture is unavailable, drag to look or use the arrow keys. All game assets are local; gameplay makes no network requests.
+Open **http://127.0.0.1:3000**. Choose **New Story** or **Continue**, then enter the selected chapter to enable sound and mouse capture. When browser mouse capture is unavailable, drag to look or use the arrow keys. All game assets are local; gameplay makes no network requests.
 
 ```sh
 npm run build
@@ -42,7 +42,15 @@ The production build is in `dist/`. Serve that directory over HTTP; opening `ind
 | Recall objective          | H                                   |
 | Pause                     | Esc or P                            |
 
-## What is playable
+## The Last Showing
+
+Bellwether Cinema is closing permanently. Complete a mundane survey, compare photographic memories across three reels, uncover Ada Bell's erased evacuation attempt, assemble the missing section, and open the service exit during the final screening. The patron advances when projection stops and stays where it is when the motor restarts. The cinema includes a lobby, concessions, auditorium, upstairs booth, archive, backstage and service route.
+
+The chapter includes a recorded manager message, positional projector and mechanical sounds, real developing photographs, distinct photographic puzzles, a final departure and a completed-story marker. The pause menu returns to story selection. Blackwood's existing save key and latest gameplay remain intact; cinema progress and photographs use a separate versioned save. Settings are shared.
+
+See [chapter guide, spoiler walkthrough and integration notes](docs/THE-LAST-SHOWING.md). The intended 20-35 minute first-play duration has not been established by human playtesting.
+
+## Blackwood House
 
 - A connected house of twenty areas: a central hall with six rooms off it, a west wing of conservatory, library and laundry, an east wing of parlour and gallery, two upstairs bedrooms with a guest room and bathroom behind them, working staircases, an attic, a basement workshop, ritual chamber and cold store, and an exterior porch. Room loops offer alternate escape routes.
 - Real scene photographs with a four-second development period, hidden supernatural figures, an inspectable physical print, and a persistent photograph journal.

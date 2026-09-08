@@ -14,7 +14,12 @@
     "test:death": "node scripts/death.mjs",
     "format": "prettier --write src scripts tests index.html vite.config.js package.json README.md",
     "test:polish": "node scripts/polish.mjs",
-    "test:characters": "node scripts/characters.mjs"
+    "test:characters": "node scripts/characters.mjs",
+    "test:cinema": "node scripts/cinema.mjs",
+    "test:cinema-systems": "node scripts/cinema-systems.mjs",
+    "test:cinema-routes": "node scripts/cinema-routes.mjs",
+    "test:anthology": "node scripts/anthology.mjs",
+    "test:cinema-photos": "node scripts/cinema-photos.mjs"
   },
   "dependencies": {
     "three": "0.180.0"

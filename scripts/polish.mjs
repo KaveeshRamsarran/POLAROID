@@ -12,7 +12,7 @@ const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
 await fs.mkdir("artifacts", { recursive: true });
 try {
-  await page.goto(process.argv[2] || "http://127.0.0.1:3000");
+  await page.goto((process.argv[2] || "http://127.0.0.1:3000") + "?chapter=blackwood");
   await page.locator("#loading").waitFor({ state: "hidden" });
   const geometry = await page.evaluate(async () => {
     const { THREE } = await import("/scripts/polish-fixture.js");

@@ -36,7 +36,7 @@ async function down(pitch) {
   await page.keyboard.up("ArrowDown");
 }
 try {
-  await page.goto(process.argv[2] || "http://127.0.0.1:3000");
+  await page.goto((process.argv[2] || "http://127.0.0.1:3000") + "?chapter=blackwood");
   await page.locator("#loading").waitFor({ state: "hidden" });
   await page.getByRole("button", { name: "03 SETTINGS" }).click();
   await page.getByLabel("Master volume").fill("0.25");

@@ -12,3 +12,7 @@ artifacts/*
 !artifacts/gait-65.png
 !artifacts/gait-77.png
 !artifacts/gait-89.png
+
+!artifacts/anthology.png
+!artifacts/cinema-first-print.png
+!artifacts/cinema-ending.png

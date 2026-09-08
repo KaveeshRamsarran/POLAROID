@@ -1,4 +1,5 @@
 import "./style.css";
+import { createRenderer, releaseScene } from "./shared/runtime.js";
 import * as THREE from "three";
 import { buildWorld } from "./world.js";
 import { Soundscape, footSurface } from "./audio.js";
@@ -26,12 +27,7 @@ scene.background = new THREE.Color("#08120e");
 scene.fog = new THREE.FogExp2("#13251c", 0.029);
 let renderer;
 try {
-  renderer = new THREE.WebGLRenderer({
-    canvas,
-    antialias: true,
-    preserveDrawingBuffer: true,
-    powerPreference: "high-performance",
-  });
+  renderer = createRenderer(canvas);
 } catch (e) {
   $("loading").innerHTML =
     '<div class="loading-brand">POLAROID</div><p>WebGL is unavailable. Please open the game in a desktop browser with hardware acceleration.</p>';
@@ -253,6 +249,15 @@ function releaseMouse() {
   dragging = false;
 }
 function startGame(useSave = false) {
+  if (!useSave) {
+    try {
+      const completed = JSON.parse(
+        localStorage.getItem("polaroid.completed.v1") || "{}",
+      );
+      delete completed.blackwood;
+      localStorage.setItem("polaroid.completed.v1", JSON.stringify(completed));
+    } catch {}
+  }
   session++;
   const saved = useSave ? readSave() || (started ? state : null) : null;
   state = saved || newState();
@@ -370,7 +375,7 @@ function openPause() {
     "pause",
     panel(
       "A MOMENT OF STILLNESS",
-      `<p class="small">${objectiveFor(state)}</p><button class="panel-button" id="resume">CONTINUE ↗</button><button class="panel-button" id="pause-settings">SETTINGS</button><button class="panel-button" id="controls">CONTROLS</button><button class="panel-button" id="save-exit">SAVE & RETURN TO MENU</button>`,
+      `<p class="small">${objectiveFor(state)}</p><button class="panel-button" id="resume">CONTINUE ↗</button><button class="panel-button" id="pause-settings">SETTINGS</button><button class="panel-button" id="controls">CONTROLS</button><button class="panel-button" id="save-exit">SAVE & STORY SELECTION</button>`,
     ),
   );
   $("resume").onclick = resume;
@@ -378,7 +383,7 @@ function openPause() {
   $("controls").onclick = openControls;
   $("save-exit").onclick = () => {
     checkpoint();
-    backMenu();
+    location.href = "./";
   };
   bindClose(resume);
 }
@@ -951,6 +956,13 @@ function die() {
   });
 }
 function finish() {
+  try {
+    const completed = JSON.parse(
+      localStorage.getItem("polaroid.completed.v1") || "{}",
+    );
+    completed.blackwood = true;
+    localStorage.setItem("polaroid.completed.v1", JSON.stringify(completed));
+  } catch {}
   state.escaped = true;
   mode = "ending";
   endingTimer = 0;
@@ -997,7 +1009,9 @@ function finish() {
     "ending",
     `<div class="panel narrow" style="text-align:center"><div class="eyebrow" style="justify-content:center">OUTSIDE / 02:47 AM</div><div class="print ending-photo final-develop"><div class="photo-window"><img src="${endingImage}" alt="The last photograph. The Observer is still there."></div><div class="print-caption">YOU BROUGHT IT WITH YOU.</div></div><h2 class="ending-title">POLAROID</h2><p>The rain has stopped.<br>Something behind you has not.</p><p class="small">${state.shots} EXPOSURES · FOUR MEMORIES · ${Math.floor(state.elapsed / 60)} MINUTES<br>THANK YOU FOR PLAYING</p><button class="filled-button" id="ending-menu">RETURN TO MENU</button></div>`,
   );
-  $("ending-menu").onclick = backMenu;
+  $("ending-menu").onclick = () => {
+    location.href = "./";
+  };
   if (audio.ctx)
     audio.master.gain.setTargetAtTime(0, audio.ctx.currentTime, 0.4);
 }
@@ -1419,4 +1433,35 @@ Object.defineProperty(window, "polaroidNavigation", {
       ...b,
       door: door ? { open: door.open } : undefined,
     })),
+});
+
+const storyLink = document.createElement("a");
+storyLink.href = "./";
+storyLink.textContent = "STORY SELECTION";
+storyLink.style.cssText =
+  "position:fixed;right:35px;top:75px;z-index:5;font:11px monospace;letter-spacing:2px";
+$("menu").append(storyLink);
+const launchChoice = new URLSearchParams(location.search).get("play");
+if (launchChoice) {
+  const launch = document.createElement("div");
+  launch.className = "story-launch";
+  launch.innerHTML =
+    '<div class="launch-inner"><div class="eyebrow">POLAROID / CHAPTER 01</div><h1>BLACKWOOD HOUSE</h1><p>The house remembers you.</p><button id="enter-blackwood" class="filled-button">ENTER BLACKWOOD HOUSE</button><p><a href="./">BACK TO STORIES</a></p></div>';
+  document.body.append(launch);
+  document.getElementById("enter-blackwood").onclick = () => {
+    launch.remove();
+    startGame(launchChoice === "continue");
+    const p = new URLSearchParams(location.search);
+    p.delete("play");
+    history.replaceState(null, "", "?" + p);
+  };
+}
+window.addEventListener("pagehide", () => {
+  audio.ctx?.close();
+  releaseScene(scene);
+  releaseScene(weaponScene);
+  renderer.dispose();
+});
+window.addEventListener("pageshow", (event) => {
+  if (event.persisted) location.reload();
 });

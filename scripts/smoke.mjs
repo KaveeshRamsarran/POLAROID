@@ -12,7 +12,7 @@ page.on("pageerror", (e) => errors.push(e.message));
 page.on("console", (m) => {
   if (m.type() === "error") errors.push(m.text());
 });
-await page.goto(process.argv[2] || "http://127.0.0.1:3000");
+await page.goto((process.argv[2] || "http://127.0.0.1:3000") + "?chapter=blackwood");
 await page.locator("#loading").waitFor({ state: "hidden", timeout: 30000 });
 await page.screenshot({ path: "artifacts/menu.png" });
 console.log("menu", await page.evaluate(() => window.polaroidDiagnostics));

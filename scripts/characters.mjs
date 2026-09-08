@@ -11,7 +11,7 @@ const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
 await fs.mkdir("artifacts", { recursive: true });
 try {
-  await page.goto(process.argv[2] || "http://127.0.0.1:3000");
+  await page.goto((process.argv[2] || "http://127.0.0.1:3000") + "?chapter=blackwood");
   await page.locator("#loading").waitFor({ state: "hidden", timeout: 60000 });
   await page.getByRole("button", { name: "01 NEW GAME" }).click();
   await page.mouse.down({ button: "right" });
