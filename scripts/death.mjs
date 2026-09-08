@@ -11,7 +11,7 @@ await page.addInitScript(
   s,
 );
 try {
-  await page.goto("http://127.0.0.1:3000");
+  await page.goto(process.argv[2] || "http://127.0.0.1:3000");
   await page.locator("#loading").waitFor({ state: "hidden" });
   await page.getByRole("button", { name: "02 CONTINUE" }).click();
   await page.keyboard.down("Shift");

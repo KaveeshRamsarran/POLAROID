@@ -1,2 +1,9 @@
 node_modules/
 *.log
+artifacts/*
+!artifacts/menu.png
+!artifacts/gameplay.png
+!artifacts/photo.png
+!artifacts/polish-attic.png
+!artifacts/polish-chairs.png
+!artifacts/polish-observer.png

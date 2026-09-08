@@ -1,7 +1,7 @@
 import "./style.css";
 import * as THREE from "three";
 import { buildWorld } from "./world.js";
-import { Soundscape } from "./audio.js";
+import { Soundscape, footSurface } from "./audio.js";
 import {
   clamp,
   distance,
@@ -610,7 +610,7 @@ function interact() {
       return;
     }
     d.target = d.target ? 0 : 1;
-    audio.door({ ...d.position, y: d.y + 1 });
+    audio.door({ ...d.position, y: d.y + 1 }, d.target === 1);
     ai.hear(player, 8, Object.keys(state.evidence).length);
     return;
   }
@@ -1067,7 +1067,12 @@ function movePlayer(dt) {
   camera.rotation.set(lookPitch, lookYaw, 0, "YXZ");
   stepTimer -= dt;
   if (moving && stepTimer <= 0) {
-    audio.foot(player, floor > 0, sprint);
+    audio.foot(
+      { ...player, y: floor + 0.12 },
+      footSurface(player.x, player.z),
+      sprint,
+      crouched,
+    );
     stepTimer = crouched ? 0.7 : sprint ? 0.31 : 0.48;
   }
   if (settings.blur)
@@ -1134,6 +1139,18 @@ function updatePlaying(dt) {
       ai.materialize > 0);
   $("danger").style.opacity = String(result.warning * 0.48);
   audio.update(player, lookYaw, result.warning);
+  const entitySource = {
+    x: ai.position.x,
+    y: world.observer.position.y + 1.5,
+    z: ai.position.z,
+  };
+  audio.entity(
+    dt,
+    entitySource,
+    n >= 2 && distance(player, ai.position) < 14,
+    ai.state === "CHASING",
+    !lineOfSight(player, entitySource, world.solids),
+  );
   heartbeat -= dt;
   if (heartbeat <= 0 && result.warning > 0.35) {
     audio.pulse(result.warning * 0.12);

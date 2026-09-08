@@ -55,7 +55,7 @@ async function shoot(id) {
   console.log("capture", id, await diag());
 }
 try {
-  await page.goto("http://127.0.0.1:3000");
+  await page.goto(process.argv[2] || "http://127.0.0.1:3000");
   await ready();
   const solids = await page.evaluate(() => window.polaroidNavigation);
   for (const [x, z] of [
