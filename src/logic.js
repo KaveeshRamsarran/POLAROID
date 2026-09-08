@@ -9,6 +9,8 @@ export function seededRandom(seed) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
+// Rooms are laid out in plan: no two occupy the same footprint, so a single
+// x/z lookup resolves both the room and the height of its floor.
 export const regions = [
   { name: "ENTRANCE HALL", x1: -2.2, x2: 2.2, z1: -17, z2: 14, y: 0 },
   { name: "LIVING ROOM", x1: -10, x2: -2.2, z1: 4, z2: 14, y: 0 },
@@ -17,10 +19,19 @@ export const regions = [
   { name: "KITCHEN", x1: 2.2, x2: 10, z1: 4, z2: 14, y: 0 },
   { name: "DINING ROOM", x1: 2.2, x2: 10, z1: -6, z2: 4, y: 0 },
   { name: "WASHROOM", x1: 2.2, x2: 10, z1: -17, z2: -6, y: 0 },
+  // West wing, entered from the living room, study and storage.
+  { name: "CONSERVATORY", x1: -19, x2: -10, z1: 4, z2: 14, y: 0 },
+  { name: "LIBRARY", x1: -19, x2: -10, z1: -6, z2: 4, y: 0 },
+  { name: "LAUNDRY", x1: -19, x2: -10, z1: -17, z2: -6, y: 0 },
+  // East wing, entered from the kitchen and dining room.
+  { name: "PARLOUR", x1: 10, x2: 19, z1: 4, z2: 14, y: 0 },
+  { name: "GALLERY", x1: 10, x2: 19, z1: -6, z2: 4, y: 0 },
   { name: "STAIRCASE", x1: -2.2, x2: 2.2, z1: -23, z2: -17, y: 0, ramp: "up" },
   { name: "UPPER LANDING", x1: -2.2, x2: 2.2, z1: -29, z2: -23, y: 3.6 },
   { name: "NURSERY", x1: -10, x2: -2.2, z1: -29, z2: -18, y: 3.6 },
   { name: "MASTER BEDROOM", x1: 2.2, x2: 10, z1: -29, z2: -18, y: 3.6 },
+  { name: "GUEST ROOM", x1: -10, x2: -2.2, z1: -35, z2: -29, y: 3.6 },
+  { name: "BATHROOM", x1: 2.2, x2: 10, z1: -35, z2: -29, y: 3.6 },
   {
     name: "ATTIC STAIRS",
     x1: -2.2,
@@ -41,7 +52,21 @@ export const regions = [
     ramp: "down",
   },
   { name: "RITUAL CHAMBER", x1: 16, x2: 28, z1: -22, z2: -6, y: -3.6 },
+  { name: "COLD STORE", x1: 16, x2: 28, z1: -30, z2: -22, y: -3.6 },
   { name: "FRONT PORCH", x1: -5, x2: 5, z1: 14, z2: 24, y: 0 },
+];
+// Floor finishes drive both the rendered material and the footstep surface, so
+// the two can never disagree about what the player is standing on.
+export const tiledRooms = ["KITCHEN", "WASHROOM", "LAUNDRY", "BATHROOM"];
+export const boardedRooms = [
+  "LIVING ROOM",
+  "STUDY",
+  "DINING ROOM",
+  "FRONT PORCH",
+  "CONSERVATORY",
+  "LIBRARY",
+  "PARLOUR",
+  "GALLERY",
 ];
 export function regionAt(x, z) {
   return regions.find((r) => x >= r.x1 && x <= r.x2 && z >= r.z1 && z <= r.z2);
@@ -176,7 +201,7 @@ export const evidenceDefs = [
     symbol: "III",
     x: -7,
     y: 4.9,
-    z: -26,
+    z: -27.3,
     look: "The small bed in the upstairs nursery.",
     note: "A child waits beside the bed. The outline is made of light.",
     story:

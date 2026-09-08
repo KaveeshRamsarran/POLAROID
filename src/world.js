@@ -1,9 +1,16 @@
 import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
-import { regions, evidenceDefs, seededRandom, floorAt } from "./logic.js";
+import {
+  regions,
+  evidenceDefs,
+  seededRandom,
+  floorAt,
+  tiledRooms,
+  boardedRooms,
+} from "./logic.js";
 
-import { createSurface, repeatMaterial } from "./materials.js";
+import { createSurface, repeatMaterial, surfaceKinds } from "./materials.js";
 
 const rnd = seededRandom(971017);
 export function buildWorld(scene) {
@@ -18,10 +25,7 @@ export function buildWorld(scene) {
     architecture = [],
     chairs = [];
   const textures = Object.fromEntries(
-    ["wall", "wood", "metal", "fabric", "floor", "skin"].map((k) => [
-      k,
-      createSurface(k),
-    ]),
+    surfaceKinds.map((k) => [k, createSurface(k)]),
   );
   const materialCache = new Map();
   const material = (color, roughness = 0.85, metalness = 0) => {
@@ -35,7 +39,8 @@ export function buildWorld(scene) {
   };
   const mats = {
     wall: material("#b8c2b8"),
-    floor: material("#9ca68e", 0.76),
+    tile: material("#a9b39d", 0.68),
+    concrete: material("#9ca68e", 0.8),
     wood: material("#c1ad85"),
     metal: material("#859785", 0.6, 0.65),
     fabric: material("#8a9071"),
@@ -47,6 +52,8 @@ export function buildWorld(scene) {
     glass: material("#263e39", 0.17, 0.8),
     skin: material("#b5bbaa", 0.72),
     red: material("#743729", 0.6, 0.2),
+    brass: material("#8a7442", 0.45, 0.7),
+    leaf: material("#4e6440", 0.86),
   };
   for (const k of Object.keys(textures)) {
     Object.assign(mats[k], textures[k]);
@@ -189,33 +196,67 @@ export function buildWorld(scene) {
     architecture.push({ type: "wall", x, z, w, d, y, h });
     solid(x, z, w, d, undefined, y, h);
   }
-  function wallX(z, a, b, y = 0, gaps = []) {
+  // Openings are always 2.25 m tall; the lintel takes up whatever is left, so a
+  // storey can be shortened where another storey's wall sits directly above it.
+  function wallX(z, a, b, y = 0, gaps = [], h = 3.25) {
     let p = a;
     for (const [g1, g2] of gaps) {
-      if (g1 > p) wallSegment((p + g1) / 2, z, g1 - p, 0.2, y);
-      box(g2 - g1, 1, 0.2, (g1 + g2) / 2, y + 2.75, z, mats.wall);
+      if (g1 > p) wallSegment((p + g1) / 2, z, g1 - p, 0.2, y, h);
+      box(
+        g2 - g1,
+        h - 2.25,
+        0.2,
+        (g1 + g2) / 2,
+        y + (h + 2.25) / 2,
+        z,
+        mats.wall,
+      );
       p = g2;
     }
-    if (p < b) wallSegment((p + b) / 2, z, b - p, 0.2, y);
+    if (p < b) wallSegment((p + b) / 2, z, b - p, 0.2, y, h);
   }
-  function wallZ(x, a, b, y = 0, gaps = []) {
+  function wallZ(x, a, b, y = 0, gaps = [], h = 3.25) {
     let p = a;
     for (const [g1, g2] of gaps) {
-      if (g1 > p) wallSegment(x, (p + g1) / 2, 0.2, g1 - p, y);
-      box(0.2, 1, g2 - g1, x, y + 2.75, (g1 + g2) / 2, mats.wall);
+      if (g1 > p) wallSegment(x, (p + g1) / 2, 0.2, g1 - p, y, h);
+      box(
+        0.2,
+        h - 2.25,
+        g2 - g1,
+        x,
+        y + (h + 2.25) / 2,
+        (g1 + g2) / 2,
+        mats.wall,
+      );
       p = g2;
     }
-    if (p < b) wallSegment(x, (p + b) / 2, 0.2, b - p, y);
+    if (p < b) wallSegment(x, (p + b) / 2, 0.2, b - p, y, h);
+  }
+  // Floor finish follows the same room lists the footstep audio reads, so a tiled
+  // room always sounds tiled.
+  const floorMaterials = new Map();
+  function floorFinish(name, y) {
+    if (tiledRooms.includes(name)) return mats.tile;
+    if (y > 0 || boardedRooms.includes(name)) return mats.wood;
+    return mats.concrete;
   }
   for (const r of regions) {
     if (r.ramp) continue;
     const w = r.x2 - r.x1,
       d = r.z2 - r.z1,
-      woodFloor =
-        r.y > 0 ||
-        ["LIVING ROOM", "STUDY", "DINING ROOM", "FRONT PORCH"].includes(r.name),
-      mat = repeatMaterial(woodFloor ? mats.wood : mats.floor, w / 3, d / 3);
-    box(w, 0.18, d, (r.x1 + r.x2) / 2, r.y - 0.1, (r.z1 + r.z2) / 2, mat);
+      finish = floorFinish(r.name, r.y),
+      key = `${finish.uuid},${w},${d}`;
+    if (!floorMaterials.has(key))
+      floorMaterials.set(key, repeatMaterial(finish, w / 3, d / 3));
+    box(
+      w,
+      0.18,
+      d,
+      (r.x1 + r.x2) / 2,
+      r.y - 0.1,
+      (r.z1 + r.z2) / 2,
+      floorMaterials.get(key),
+    );
     if (r.name !== "FRONT PORCH")
       box(
         w,
@@ -227,27 +268,53 @@ export function buildWorld(scene) {
         mats.dark,
       );
   }
-  wallX(14, -10, 10, 0, [[-0.8, 0.8]]);
+  // Openings are sized to their leaf: a 1.05 m door needs a 1.25 m reveal.
+  const LEAF = 1.05,
+    HEAVY = 1.15,
+    DOORWAY = LEAF + 0.2,
+    PORTAL = HEAVY + 0.2,
+    ARCH = 1.5;
+  const gap = (centre, width) => [centre - width / 2, centre + width / 2];
+  // Ground floor: front and rear elevations, then the west and east wings.
+  wallX(14, -19, 19, 0, [gap(0, PORTAL)]);
+  wallX(-17, -19, -10, 0);
   wallX(-17, -10, 10, 0, [[-2.2, 2.2]]);
-  wallZ(-10, -17, 14);
-  wallZ(10, -17, 14, 0, [[-16, -12]]);
+  wallZ(-19, -17, 14);
+  wallZ(19, -6, 14);
+  wallZ(-10, -17, 14, 0, [
+    gap(-14, DOORWAY),
+    gap(-4, DOORWAY),
+    gap(6, DOORWAY),
+  ]);
+  wallZ(10, -17, 14, 0, [[-16, -12], gap(1, DOORWAY), gap(11.5, DOORWAY)]);
   for (const x of [-2.2, 2.2])
     wallZ(x, -17, 14, 0, [
-      [-13, -11],
-      [-2, 0],
-      [8, 10],
+      gap(-12, DOORWAY),
+      gap(-1, DOORWAY),
+      gap(9, DOORWAY),
     ]);
   for (const z of [-6, 4]) {
-    wallX(z, -10, -2.2, 0, [[-7, -5]]);
-    wallX(z, 2.2, 10, 0, [[5, 7]]);
+    wallX(z, -19, -10, 0, [gap(-14.5, ARCH)]);
+    wallX(z, -10, -2.2, 0, [gap(-6, ARCH)]);
+    wallX(z, 2.2, 10, 0, [gap(6, ARCH)]);
   }
-  wallX(-29, -10, 10, 3.6, [[-1.05, 1.05]]);
+  wallX(4, 10, 19, 0, [gap(14.5, ARCH)]);
+  wallX(-6, 10, 19, 0);
+  // Upper floor: bedrooms, and the guest room and bathroom behind them.
+  wallX(-29, -10, 10, 3.6, [
+    gap(-8.5, DOORWAY),
+    gap(0, PORTAL),
+    gap(8.5, DOORWAY),
+  ]);
   wallX(-18, -10, -2.2, 3.6);
   wallX(-18, 2.2, 10, 3.6);
-  wallZ(-10, -29, -18, 3.6);
-  wallZ(10, -29, -18, 3.6);
-  wallZ(-2.2, -29, -23, 3.6, [[-27, -25]]);
-  wallZ(2.2, -29, -23, 3.6, [[-27, -25]]);
+  // Stops at 6.8, exactly where the attic's own south wall begins.
+  wallX(-35, -10, -2.2, 3.6, [], 3.2);
+  wallX(-35, 2.2, 10, 3.6, [], 3.2);
+  wallZ(-10, -35, -18, 3.6);
+  wallZ(10, -35, -18, 3.6);
+  wallZ(-2.2, -29, -23, 3.6, [gap(-26, DOORWAY)]);
+  wallZ(2.2, -29, -23, 3.6, [gap(-26, DOORWAY)]);
   function stairs(x, z, width, length, start, rise, axis = "z") {
     const n = 18;
     for (let i = 0; i < n; i++) {
@@ -260,7 +327,7 @@ export function buildWorld(scene) {
           x,
           y - 0.1,
           z - ((i + 0.5) * length) / n,
-          mats.floor,
+          mats.concrete,
         );
         box(width, 0.024, 0.05, x, y + 0.01, z - (i * length) / n, mats.metal);
       } else {
@@ -271,7 +338,7 @@ export function buildWorld(scene) {
           x + ((i + 0.5) * length) / n,
           y - 0.1,
           z,
-          mats.floor,
+          mats.concrete,
         );
         box(0.05, 0.024, width, x + (i * length) / n, y + 0.01, z, mats.metal);
       }
@@ -340,11 +407,13 @@ export function buildWorld(scene) {
   wallX(-35, -6, 6, 6.8, [[-2.2, 2.2]]);
   wallZ(-6, -43, -35, 6.8);
   wallZ(6, -43, -35, 6.8);
-  wallX(-22, 16, 28, -3.6);
+  wallX(-22, 16, 28, -3.6, [gap(17.5, PORTAL)]);
+  wallX(-30, 16, 28, -3.6);
   wallX(-6, 16, 28, -3.6);
-  wallZ(28, -22, -6, -3.6);
-  wallZ(16, -22, -6, -3.6, [[-15.05, -12.95]]);
-  function door(x, z, rotation, label, y = 0, locked = null, width = 1.7) {
+  wallZ(28, -30, -6, -3.6);
+  wallZ(16, -30, -22, -3.6);
+  wallZ(16, -22, -6, -3.6, [gap(-14, PORTAL)]);
+  function door(x, z, rotation, label, y = 0, locked = null, width = LEAF) {
     const g = new THREE.Group();
     g.position.set(x, y, z);
     g.rotation.y = rotation;
@@ -396,9 +465,10 @@ export function buildWorld(scene) {
       mats.rust,
       pivot,
     ).rotation.z = Math.PI / 2;
-    for (const sx of [-width / 2 - 0.05, width / 2 + 0.05])
-      box(0.08, 2.35, 0.18, sx, 1.17, 0, mats.rust, g);
-    box(width + 0.17, 0.09, 0.18, 0, 2.34, 0, mats.rust, g);
+    // The casing laps onto the reveal so a narrow leaf leaves no open slot.
+    for (const sx of [-width / 2 - 0.09, width / 2 + 0.09])
+      box(0.19, 2.36, 0.19, sx, 1.18, 0, mats.rust, g);
+    box(width + 0.38, 0.1, 0.19, 0, 2.36, 0, mats.rust, g);
     const d = {
       group: g,
       pivot,
@@ -434,13 +504,21 @@ export function buildWorld(scene) {
     [2.2, -1, -Math.PI / 2, "DINING"],
     [-2.2, -12, Math.PI / 2, "STORE"],
     [2.2, -12, -Math.PI / 2, "WASHROOM"],
+    [-10, 6, Math.PI / 2, "CONSERVATORY"],
+    [-10, -4, Math.PI / 2, "LIBRARY"],
+    [-10, -14, Math.PI / 2, "LAUNDRY"],
+    [10, 11.5, -Math.PI / 2, "PARLOUR"],
+    [10, 1, -Math.PI / 2, "GALLERY"],
   ])
     door(x, z, rot, label);
   door(-2.2, -26, Math.PI / 2, "NURSERY", 3.6);
   door(2.2, -26, -Math.PI / 2, "BEDROOM", 3.6);
-  const atticDoor = door(0, -29, 0, "PRIVATE / ARCHIVE", 3.6, "attic", 2);
-  const frontDoor = door(0, 14, Math.PI, "FRONT ENTRANCE", 0, "exit", 1.5);
-  door(16, -14, -Math.PI / 2, "CELLAR", -3.6, "basement", 2);
+  door(-8.5, -29, 0, "GUEST ROOM", 3.6);
+  door(8.5, -29, 0, "BATHROOM", 3.6);
+  door(17.5, -22, 0, "COLD STORE", -3.6);
+  const atticDoor = door(0, -29, 0, "PRIVATE / ARCHIVE", 3.6, "attic", HEAVY);
+  const frontDoor = door(0, 14, Math.PI, "FRONT ENTRANCE", 0, "exit", HEAVY);
+  door(16, -14, -Math.PI / 2, "CELLAR", -3.6, "basement", HEAVY);
   function fixture(x, y, z, w = 1.5, warm = false) {
     box(w + 0.12, 0.12, 0.4, x, y, z, mats.metal);
     const glow = new THREE.MeshStandardMaterial({
@@ -475,6 +553,14 @@ export function buildWorld(scene) {
   fixture(6, 6.6, -23, 1, true);
   fixture(20, -0.6, -14, 1.2);
   fixture(-6, 3, -12, 1.1);
+  fixture(-14.5, 3, 9.4, 1.4, true);
+  fixture(-14.5, 3, -1, 1.4);
+  fixture(-14.5, 3, -12, 1.3);
+  fixture(14.5, 3, 9.4, 1.4, true);
+  fixture(14.5, 3, -1, 1.4);
+  fixture(-6.4, 6.6, -32, 1.1, true);
+  fixture(6, 6.6, -32, 1.2);
+  fixture(22, -0.6, -26, 1.2);
   for (const x of [-0.9, -0.48, 0.48, 0.9]) {
     link(
       [x, 2.88, 13.7],
@@ -694,6 +780,243 @@ export function buildWorld(scene) {
     cylinder(0.025, 0.12, x, y + 0.3, z, mats.glass);
     cylinder(0.029, 0.035, x, y + 0.36, z, mats.rust);
   }
+  // A group whose local +Z is the piece's front, so callers only ever say which
+  // way it faces. `depth` is how far the piece reaches back from its front face.
+  function furniture(x, z, y, rot) {
+    const g = new THREE.Group();
+    g.position.set(x, y, z);
+    g.rotation.y = rot;
+    scene.add(g);
+    return g;
+  }
+  function footprint(x, z, w, d, y, h, rot) {
+    solid(
+      x,
+      z,
+      Math.abs(Math.cos(rot)) * w + Math.abs(Math.sin(rot)) * d,
+      Math.abs(Math.sin(rot)) * w + Math.abs(Math.cos(rot)) * d,
+      undefined,
+      y,
+      h,
+    );
+  }
+  function armchair(x, z, rot = 0, y = 0) {
+    const g = furniture(x, z, y, rot);
+    round(0.95, 0.4, 0.88, 0, 0.42, 0, mats.fabric, g, 0.11);
+    round(0.95, 0.86, 0.24, 0, 0.79, -0.38, mats.fabric, g, 0.1);
+    for (const a of [-0.42, 0.42])
+      round(0.24, 0.58, 0.9, a, 0.66, 0.01, mats.fabric, g, 0.1);
+    round(0.68, 0.16, 0.64, 0, 0.66, 0.06, mats.fabric, g, 0.08);
+    for (const a of [-0.38, 0.38])
+      for (const b of [-0.32, 0.32])
+        cylinder(0.05, 0.24, a, 0.11, b, mats.wood, g);
+    footprint(x, z, 1.05, 1, y, 0.9, rot);
+    return g;
+  }
+  function sideboard(x, z, rot = 0, y = 0, w = 1.7) {
+    const g = furniture(x, z, y, rot);
+    round(w, 0.86, 0.52, 0, 0.5, 0, mats.wood, g, 0.03);
+    round(w + 0.06, 0.05, 0.58, 0, 0.95, 0, mats.wood, g, 0.02);
+    for (let i = 0; i < 3; i++)
+      for (const a of [-w / 4, w / 4]) {
+        round(w / 2 - 0.1, 0.2, 0.03, a, 0.26 + i * 0.26, 0.27, mats.wood, g);
+        cylinder(
+          0.02,
+          0.09,
+          a,
+          0.26 + i * 0.26,
+          0.31,
+          mats.brass,
+          g,
+        ).rotation.z = Math.PI / 2;
+      }
+    for (const a of [-w / 2 + 0.1, w / 2 - 0.1])
+      for (const b of [-0.18, 0.18])
+        cylinder(0.045, 0.16, a, 0.08, b, mats.wood, g);
+    footprint(x, z, w, 0.58, y, 0.95, rot);
+    return g;
+  }
+  function shelfUnit(x, z, rot = 0, y = 0, w = 1.8) {
+    const g = furniture(x, z, y, rot);
+    for (const a of [-w / 2 + 0.06, w / 2 - 0.06])
+      for (const b of [-0.19, 0.19])
+        box(0.07, 2.05, 0.07, a, 1.02, b, mats.rust, g);
+    for (let i = 0; i < 4; i++) {
+      round(w, 0.05, 0.46, 0, 0.28 + i * 0.55, 0, mats.metal, g, 0.012);
+      box(w, 0.09, 0.03, 0, 0.34 + i * 0.55, -0.22, mats.rust, g);
+    }
+    footprint(x, z, w, 0.5, y, 2.05, rot);
+    return g;
+  }
+  function crate(x, z, s = 0.7, y = 0, rot = 0) {
+    const g = furniture(x, z, y, rot);
+    round(s, s * 0.86, s * 0.78, 0, (s * 0.86) / 2, 0, mats.wood, g, 0.02);
+    for (const b of [-1, 1])
+      box(s + 0.015, 0.05, 0.05, 0, s * 0.2, (b * s * 0.78) / 2, mats.rust, g);
+    box(s * 0.16, 0.01, s * 0.79, 0, s * 0.86 + 0.01, 0, mats.paper, g);
+    footprint(x, z, s, s * 0.78, y, s * 0.86, rot);
+    return g;
+  }
+  function plant(x, z, y = 0, scale = 1) {
+    const g = furniture(x, z, y, rnd() * 6.28);
+    cylinder(
+      0.24 * scale,
+      0.34 * scale,
+      0,
+      0.17 * scale,
+      0,
+      mats.rust,
+      g,
+      0.18 * scale,
+    );
+    cylinder(0.2 * scale, 0.04 * scale, 0, 0.34 * scale, 0, mats.dark, g);
+    for (let i = 0; i < 11; i++) {
+      const a = (i / 11) * Math.PI * 2 + rnd(),
+        lean = 0.5 + rnd() * 0.55;
+      const leaf = link(
+        [0, 0.34 * scale, 0],
+        [
+          Math.cos(a) * lean * scale,
+          (0.5 + rnd() * 0.85) * scale,
+          Math.sin(a) * lean * scale,
+        ],
+        0.02 * scale,
+        mats.leaf,
+        g,
+      );
+      leaf.scale.x = 5;
+      leaf.scale.z = 1.4;
+    }
+    footprint(x, z, 0.5 * scale, 0.5 * scale, y, 0.4 * scale, 0);
+    return g;
+  }
+  // A bricked hearth with a timber mantel; the flue reads as a dark recess.
+  function fireplace(x, z, rot = 0, y = 0) {
+    const g = furniture(x, z, y, rot);
+    for (const a of [-0.85, 0.85])
+      box(0.5, 1.5, 0.42, a, 0.75, 0, mats.wall, g);
+    box(2.2, 0.42, 0.42, 0, 1.71, 0, mats.wall, g);
+    box(1.2, 1.5, 0.36, 0, 0.75, -0.06, mats.black, g);
+    round(2.5, 0.14, 0.56, 0, 2, 0.02, mats.wood, g, 0.03);
+    box(1.34, 0.1, 0.44, 0, 1.48, 0.02, mats.rust, g);
+    for (let i = 0; i < 5; i++)
+      cylinder(
+        0.05 + rnd() * 0.03,
+        0.5,
+        -0.3 + i * 0.15,
+        0.22,
+        0.02,
+        mats.dark,
+        g,
+      ).rotation.set(0, rnd(), Math.PI / 2 + (rnd() - 0.5) * 0.5);
+    box(1.5, 0.06, 0.5, 0, 0.03, 0.06, mats.dark, g);
+    footprint(x, z, 2.5, 0.56, y, 2.05, rot);
+    fixtures.push({
+      x: x - Math.sin(rot) * -0.2,
+      y: y + 0.45,
+      z: z + Math.cos(rot) * -0.2,
+      color: 0xe09a52,
+      power: 6,
+    });
+    return g;
+  }
+  function pictureFrame(x, y, z, rot, text, w = 0.72, h = 0.9) {
+    const g = furniture(x, z, y, rot);
+    round(w, h, 0.06, 0, 0, 0, mats.wood, g, 0.015);
+    round(w - 0.13, h - 0.13, 0.02, 0, 0, 0.035, mats.dark, g, 0.008);
+    sign(
+      text,
+      0,
+      0,
+      0.05,
+      w - 0.17,
+      h - 0.17,
+      0,
+      {
+        bg: "#1b2a20",
+        fg: "#96a888",
+        size: 30,
+      },
+      g,
+    );
+    return g;
+  }
+  function radiator(x, z, rot = 0, y = 0, w = 1.1) {
+    const g = furniture(x, z, y, rot);
+    const n = Math.round(w / 0.09);
+    for (let i = 0; i < n; i++)
+      round(
+        0.06,
+        0.62,
+        0.14,
+        -w / 2 + i * 0.09 + 0.045,
+        0.42,
+        0,
+        mats.rust,
+        g,
+        0.02,
+      );
+    for (const b of [0.15, 0.69])
+      cylinder(0.035, w, 0, b, 0, mats.rust, g).rotation.z = Math.PI / 2;
+    cylinder(0.028, 0.24, -w / 2 + 0.02, 0.12, 0, mats.metal, g);
+    footprint(x, z, w, 0.2, y, 0.75, rot);
+    return g;
+  }
+  function tub(x, z, rot = 0, y = 0) {
+    const g = furniture(x, z, y, rot);
+    round(1.75, 0.62, 0.82, 0, 0.44, 0, mats.ivory, g, 0.14);
+    round(1.55, 0.5, 0.64, 0, 0.56, 0, mats.dark, g, 0.1);
+    for (const a of [-0.72, 0.72])
+      for (const b of [-0.28, 0.28])
+        cylinder(0.055, 0.2, a, 0.11, b, mats.brass, g, 0.09);
+    link([0.78, 0.66, 0], [0.78, 0.92, 0], 0.026, mats.brass, g);
+    link([0.78, 0.92, 0], [0.56, 0.92, 0], 0.026, mats.brass, g);
+    for (const a of [0.66, 0.9])
+      cylinder(0.018, 0.11, a, 0.72, 0, mats.brass, g);
+    footprint(x, z, 1.8, 0.86, y, 0.78, rot);
+    return g;
+  }
+  function toilet(x, z, rot = 0, y = 0) {
+    const g = furniture(x, z, y, rot);
+    round(0.4, 0.68, 0.34, 0, 0.34, -0.32, mats.ivory, g, 0.05);
+    round(0.36, 0.3, 0.5, 0, 0.24, 0.06, mats.ivory, g, 0.13);
+    round(0.42, 0.07, 0.52, 0, 0.42, 0.07, mats.ivory, g, 0.12);
+    round(0.44, 0.05, 0.5, 0, 0.47, 0.09, mats.paper, g, 0.12);
+    cylinder(0.02, 0.08, 0.16, 0.66, -0.32, mats.brass, g);
+    footprint(x, z, 0.46, 0.92, y, 0.75, rot);
+    return g;
+  }
+  function trunk(x, z, rot = 0, y = 0) {
+    const g = furniture(x, z, y, rot);
+    round(1.1, 0.5, 0.62, 0, 0.25, 0, mats.wood, g, 0.03);
+    const lid = mesh(
+      new THREE.CylinderGeometry(0.31, 0.31, 1.1, 16, 1, false, 0, Math.PI),
+      mats.wood,
+      0,
+      0.5,
+      0,
+      g,
+    );
+    lid.rotation.z = Math.PI / 2;
+    for (const a of [-0.36, 0.36])
+      box(0.06, 0.58, 0.67, a, 0.27, 0, mats.rust, g);
+    round(0.16, 0.14, 0.05, 0, 0.44, 0.32, mats.brass, g, 0.01);
+    footprint(x, z, 1.14, 0.66, y, 0.8, rot);
+    return g;
+  }
+  // Deep glazed tub on cast legs, used in pairs along the laundry wall.
+  function washTub(x, z, rot = 0, y = 0) {
+    const g = furniture(x, z, y, rot);
+    round(0.92, 0.6, 0.66, 0, 0.66, 0, mats.ivory, g, 0.05);
+    round(0.76, 0.46, 0.5, 0, 0.78, 0, mats.dark, g, 0.03);
+    for (const a of [-0.36, 0.36])
+      for (const b of [-0.24, 0.24])
+        box(0.07, 0.38, 0.07, a, 0.19, b, mats.rust, g);
+    link([0, 0.96, -0.24], [0, 1.26, -0.24], 0.024, mats.brass, g);
+    link([0, 1.26, -0.24], [0, 1.26, -0.04], 0.024, mats.brass, g);
+    footprint(x, z, 0.96, 0.7, y, 1, rot);
+    return g;
+  }
   function windowAt(x, z, rot, y = 0) {
     const g = new THREE.Group();
     g.position.set(x, y + 1.7, z);
@@ -746,15 +1069,18 @@ export function buildWorld(scene) {
       power: 10,
     });
   }
-  windowAt(-9.87, 10, Math.PI / 2);
-  windowAt(9.87, 11, -Math.PI / 2);
-  windowAt(9.87, -2, -Math.PI / 2);
+  // Glazing sits on the outer elevations only; the wings took over x = ±10.
+  windowAt(-18.87, 9, Math.PI / 2);
+  windowAt(-18.87, -1, Math.PI / 2);
+  windowAt(-18.87, -12, Math.PI / 2);
+  windowAt(18.87, 9, -Math.PI / 2);
+  windowAt(18.87, -1, -Math.PI / 2);
   windowAt(-9.87, -22, Math.PI / 2, 3.6);
   windowAt(9.87, -23, -Math.PI / 2, 3.6);
-  // Living room: upholstered couch, timber legs, piping, stacked books and a dead radio.
-  const couch = new THREE.Group();
-  couch.position.set(-7.8, 0, 11.6);
-  scene.add(couch);
+  windowAt(-6.5, -34.87, 0, 3.6);
+  windowAt(6.5, -34.87, 0, 3.6);
+  // Living room: the couch stands back to the front elevation, facing the hearth.
+  const couch = furniture(-6.5, 13.31, 0, Math.PI);
   round(2.9, 0.45, 1.04, 0, 0.4, 0, mats.fabric, couch, 0.13);
   round(2.9, 0.95, 0.26, 0, 0.88, -0.46, mats.fabric, couch, 0.12);
   for (const a of [-1.38, 1.38])
@@ -766,49 +1092,67 @@ export function buildWorld(scene) {
   for (const a of [-1.15, 1.15])
     for (const b of [-0.35, 0.35])
       cylinder(0.055, 0.22, a, 0.1, b, mats.wood, couch);
-  solid(-7.8, 11.6, 3, 1.2);
-  rug(-6, 9, 4, 3.6);
-  const coffee = table(-6, 8.5, 1.8, 0.9);
+  solid(-6.5, 13.31, 3, 1.2);
+  rug(-6.5, 10.9, 4.2, 3.6);
+  const coffee = table(-6.5, 11.4, 1.8, 0.9);
   coffee.scale.y = 0.6;
   books(coffee, -0.6, 0.93, 0, 4);
-  paper(-5.8, 0.57, 8.6);
-  table(-3.5, 12.8, 0.7, 0.7);
-  lamp(-3.5, 0.92, 12.8);
-  bookshelf(-9.5, 6, 0, Math.PI / 2);
-  cabinet(-3.2, 5.1, 0, 0, true);
-  const radio = round(0.5, 0.24, 0.18, -6.2, 0.65, 8.4, mats.metal);
-  sign("FM  88  108", -6.2, 0.7, 8.502, 0.37, 0.07, 0, { size: 20 });
+  paper(-6.3, 0.57, 11.5);
+  table(-4.3, 13.55, 0.7, 0.7);
+  lamp(-4.3, 0.92, 13.55);
+  bookshelf(-9.65, 12, 0, Math.PI / 2);
+  cabinet(-2.6, 5.6, 0, -Math.PI / 2, true);
+  fireplace(-9.62, 8.6, Math.PI / 2);
+  armchair(-6.9, 8.3, -Math.PI / 2);
+  armchair(-6.9, 5.9, -Math.PI / 2);
+  sideboard(-8.6, 4.39, 0);
+  plant(-3.4, 12.6);
+  radiator(-2.42, 11.4, -Math.PI / 2);
+  for (const [z, text] of [
+    [7.2, "BLACKWOOD\n1961"],
+    [10.1, "THE ORCHARD"],
+  ])
+    pictureFrame(-2.34, 1.85, z, -Math.PI / 2, text);
+  const radio = round(0.5, 0.24, 0.18, -6.7, 0.65, 11.2, mats.metal);
+  sign("FM  88  108", -6.7, 0.7, 11.302, 0.37, 0.07, 0, { size: 20 });
   for (let i = 0; i < 8; i++)
-    box(0.27, 0.008, 0.025, -6.24, 0.57 + i * 0.014, 8.51, mats.dark);
-  cylinder(0.035, 0.025, -6, 0.63, 8.51, mats.dark).rotation.x = Math.PI / 2;
-  // Study and family documents.
-  const desk = table(-8.7, -1, 2.8, 1.1, 0, Math.PI / 2);
-  chair(-7.4, -1, -8.7, -1);
-  lamp(-8.8, 0.92, -2);
-  paper(-8.65, 0.925, -0.4, "MARA\n17 OCT 97");
+    box(0.27, 0.008, 0.025, -6.74, 0.57 + i * 0.014, 11.31, mats.dark);
+  cylinder(0.035, 0.025, -6.5, 0.63, 11.31, mats.dark).rotation.x = Math.PI / 2;
+  // Study: the desk is pushed under the empty frame it belongs to.
+  const desk = table(-9.35, -1, 2.8, 1.1, 0, Math.PI / 2);
+  chair(-8.05, -1, -9.35, -1);
+  lamp(-9.35, 0.92, -2);
+  paper(-9.3, 0.925, -0.4, "MARA\n17 OCT 97");
   books(desk, -1, 0.93, 0, 6);
-  bookshelf(-6, -5.4);
-  cabinet(-3.3, 2.8, 0, 0, true);
-  rug(-6, -1, 3, 4);
+  bookshelf(-8.5, -5.65);
+  bookshelf(-4.4, -5.65);
+  cabinet(-2.6, 2.6, 0, -Math.PI / 2, true);
+  sideboard(-8.7, 3.61, Math.PI, 0, 1.4);
+  armchair(-5.2, -2.6, -Math.PI / 2);
+  shelfUnit(-9.6, 2.4, Math.PI / 2, 0, 1.5);
+  radiator(-2.42, -3.4, -Math.PI / 2);
+  rug(-6.2, -1, 3.2, 4);
   sign("DO NOT TRUST\nAN EMPTY ROOM", -9.87, 1.8, 1.4, 1.1, 0.7, Math.PI / 2, {
     bg: "#b5b399",
     fg: "#494a36",
     size: 35,
   });
-  // Kitchen cabinets with inset doors, taps, stove coils and enamel sink.
+  // Kitchen: a run of cabinets tight against the east wall, taps, coils and sink.
   for (const z of [5.2, 6.4, 7.6]) {
-    round(0.68, 0.9, 1.15, 9.4, 0.46, z, mats.metal);
-    round(0.025, 0.68, 0.99, 9.04, 0.48, z, mats.wood);
-    link([9, 0.72, z - 0.2], [9, 0.72, z + 0.2], 0.018, mats.rust);
-    round(0.85, 0.08, 1.18, 9.35, 0.94, z, mats.ivory);
-    solid(9.4, z, 0.8, 1.2);
+    round(0.68, 0.9, 1.15, 9.56, 0.46, z, mats.metal);
+    round(0.025, 0.68, 0.99, 9.2, 0.48, z, mats.wood);
+    link([9.16, 0.72, z - 0.2], [9.16, 0.72, z + 0.2], 0.018, mats.rust);
+    round(0.85, 0.08, 1.18, 9.47, 0.94, z, mats.ivory);
+    solid(9.56, z, 0.72, 1.2);
+    round(0.34, 0.62, 1.1, 9.73, 2.14, z, mats.wood);
+    round(0.025, 0.5, 0.96, 9.55, 2.14, z, mats.metal);
   }
-  round(0.57, 0.05, 0.74, 9.31, 0.99, 6.4, mats.dark);
-  round(0.46, 0.025, 0.63, 9.3, 1.015, 6.4, mats.metal);
-  link([9.55, 1, 6.7], [9.55, 1.35, 6.7], 0.025, mats.metal);
-  link([9.55, 1.35, 6.7], [9.25, 1.35, 6.7], 0.025, mats.metal);
+  round(0.57, 0.05, 0.74, 9.43, 0.99, 6.4, mats.dark);
+  round(0.46, 0.025, 0.63, 9.42, 1.015, 6.4, mats.metal);
+  link([9.71, 1, 6.7], [9.71, 1.35, 6.7], 0.025, mats.metal);
+  link([9.71, 1.35, 6.7], [9.41, 1.35, 6.7], 0.025, mats.metal);
   for (const z of [5, 5.5])
-    for (const x of [9.13, 9.55]) {
+    for (const x of [9.29, 9.71]) {
       const coil = mesh(
         new THREE.TorusGeometry(0.14, 0.023, 7, 20),
         mats.dark,
@@ -818,13 +1162,22 @@ export function buildWorld(scene) {
       );
       coil.rotation.x = Math.PI / 2;
     }
-  cabinet(8, 13.5);
+  // Enamel refrigerator in the corner.
+  round(0.86, 1.72, 0.74, 9.45, 0.86, 12.9, mats.ivory);
+  round(0.05, 1.5, 0.62, 9, 0.94, 12.9, mats.metal);
+  cylinder(0.03, 0.42, 8.97, 1.2, 12.62, mats.brass).rotation.z = Math.PI / 2;
+  solid(9.45, 12.9, 0.9, 0.78, undefined, 0, 1.72);
+  cabinet(8, 13.6, 0, Math.PI);
   const kt = table(5.7, 10, 1.6, 1.2);
   chair(5.7, 11.1, 5.7, 10);
   chair(4.4, 10, 5.7, 10);
+  chair(5.7, 8.9, 5.7, 10);
+  chair(7, 10, 5.7, 10);
   bottle(5.4, 0.93, 10);
   paper(6, 0.925, 10.2, "FILM\nKEEP DRY");
-  // Dining room and storage.
+  radiator(2.42, 6.6, Math.PI / 2);
+  shelfUnit(2.55, 12.9, Math.PI / 2, 0, 1.6);
+  // Dining room: table in the middle, storage on the walls.
   table(6, -1, 3, 1.5);
   rug(6, -1, 4.2, 3);
   for (const x of [5, 6.7]) {
@@ -835,28 +1188,42 @@ export function buildWorld(scene) {
     cylinder(0.2, 0.025, x, 0.94, -1, mats.ivory);
     bottle(x, 0.96, -1.5);
   }
-  bookshelf(9.5, 1, 0, -Math.PI / 2);
-  cabinet(3.2, -4.6, 0, 0, true);
-  for (let i = 0; i < 10; i++) {
-    const x = -9 + rnd() * 4,
-      z = -16 + rnd() * 3,
+  bookshelf(9.65, -3.6, 0, -Math.PI / 2);
+  cabinet(2.6, -4.4, 0, Math.PI / 2, true);
+  sideboard(8.4, 3.61, Math.PI);
+  for (const x of [8.05, 8.75])
+    cylinder(0.035, 0.3, x, 1.1, 3.61, mats.brass, scene, 0.05);
+  pictureFrame(2.34, 1.85, -3, Math.PI / 2, "THE LONG TABLE", 0.8, 0.62);
+  plant(9.5, 2);
+  // Storage: shelving and stacked crates.
+  shelfUnit(-9.6, -12.2, Math.PI / 2);
+  shelfUnit(-2.55, -8.4, -Math.PI / 2);
+  for (let i = 0; i < 12; i++) {
+    const x = -8.6 + rnd() * 3.4,
+      z = -16.4 + rnd() * 3.2,
       s = 0.45 + rnd() * 0.5;
     round(s, s, s, x, s / 2, z, mats.wood);
     box(s * 0.15, 0.01, s + 0.01, x, s + 0.01, z, mats.paper);
     solid(x, z, s, s);
   }
-  bookshelf(-9.4, -9, 0, Math.PI / 2);
-  cabinet(-3.4, -15.8, 0, 0, true);
-  // Washroom mirror and cracked ceramic basin.
-  round(1.65, 0.22, 0.7, 7, 0.86, -16.2, mats.ivory, scene, 0.11);
-  ball(0.6, 0.08, 0.24, 7, 0.99, -16.17, mats.dark);
-  cylinder(0.13, 0.7, 7, 0.37, -16.2, mats.ivory);
-  link([7.55, 1, -16.45], [7.55, 1.28, -16.45], 0.026, mats.metal);
-  link([7.55, 1.28, -16.45], [7.3, 1.28, -16.45], 0.026, mats.metal);
-  round(1.7, 1.25, 0.06, 7, 1.95, -16.75, mats.rust);
-  round(1.56, 1.12, 0.015, 7, 1.95, -16.71, mats.glass);
-  solid(7, -16.25, 1.7, 0.75);
-  cabinet(9.35, -8.1, 0, -Math.PI / 2, true);
+  crate(-4.6, -11.4, 0.8, 0, 0.3);
+  crate(-4.4, -12.6, 0.62);
+  bookshelf(-9.65, -7.6, 0, Math.PI / 2);
+  cabinet(-2.6, -15.6, 0, -Math.PI / 2, true);
+  // Washroom: basin and mirror set flush to the rear wall, tub and WC opposite.
+  round(1.65, 0.22, 0.7, 7, 0.86, -16.55, mats.ivory, scene, 0.11);
+  ball(0.6, 0.08, 0.24, 7, 0.99, -16.52, mats.dark);
+  cylinder(0.13, 0.7, 7, 0.37, -16.55, mats.ivory);
+  link([7.55, 1, -16.78], [7.55, 1.28, -16.78], 0.026, mats.metal);
+  link([7.55, 1.28, -16.78], [7.3, 1.28, -16.78], 0.026, mats.metal);
+  round(1.7, 1.25, 0.06, 7, 1.95, -16.87, mats.rust);
+  round(1.56, 1.12, 0.015, 7, 1.95, -16.83, mats.glass);
+  solid(7, -16.55, 1.7, 0.7);
+  tub(2.73, -15.9, Math.PI / 2);
+  toilet(4.6, -16.4, 0);
+  cabinet(9.6, -8.1, 0, -Math.PI / 2, true);
+  radiator(9.83, -10.6, -Math.PI / 2);
+  shelfUnit(2.55, -7.1, Math.PI / 2, 0, 1.5);
   // Bedroom bedframes, folded covers, pillows and toys.
   function bed(x, z, y, child = false) {
     const w = child ? 1.35 : 2;
@@ -872,54 +1239,224 @@ export function buildWorld(scene) {
       box(w - 0.1, 0.007, 0.008, x, y + 0.655, z - 0.4 + i * 0.11, mats.dark);
     solid(x, z, w + 0.1, 2.4);
   }
-  bed(-7, -25.5, 3.6, true);
-  table(-8.8, -27.9, 0.7, 0.7, 3.6);
-  lamp(-8.8, 4.52, -27.9);
-  cabinet(-3.4, -19, 3.6, 0, true);
-  rug(-6, -23, 3, 3, 3.6);
+  // Nursery: the child's bed headboard meets the rear wall.
+  bed(-7, -27.64, 3.6, true);
+  table(-9.55, -27.9, 0.7, 0.7, 3.6);
+  lamp(-9.55, 4.52, -27.9);
+  cabinet(-4.5, -18.4, 3.6, Math.PI, true);
+  rug(-6.4, -24, 3, 3, 3.6);
   ball(0.11, 0.13, 0.1, -5, 3.89, -22, mats.wood);
   ball(0.14, 0.17, 0.09, -5, 3.71, -22, mats.wood);
   for (const a of [-0.1, 0.1])
     ball(0.06, 0.06, 0.04, -5 + a, 3.99, -22, mats.wood);
-  sign("ME + MUM\n+ THE TALL MAN", -9.87, 4.95, -26.7, 0.7, 0.6, Math.PI / 2, {
+  trunk(-9.57, -20.6, Math.PI / 2, 3.6);
+  shelfUnit(-7.5, -18.35, Math.PI, 3.6, 1.4);
+  radiator(-2.42, -20.4, -Math.PI / 2, 3.6);
+  sign("ME + MUM\n+ THE TALL MAN", -9.87, 4.95, -26.4, 0.7, 0.6, Math.PI / 2, {
     bg: "#b4b599",
     fg: "#3f4c34",
     size: 28,
   });
-  bed(7, -25, 3.6);
-  cabinet(3.3, -19, 3.6, 0, true);
-  table(9, -27.5, 0.8, 0.8, 3.6);
-  lamp(9, 4.52, -27.5);
-  bookshelf(9.5, -20, 3.6, -Math.PI / 2);
+  // Master bedroom.
+  bed(5, -27.64, 3.6);
+  cabinet(4.5, -18.4, 3.6, Math.PI, true);
+  table(6.9, -28.4, 0.8, 0.8, 3.6);
+  lamp(6.9, 4.52, -28.4);
+  table(3.1, -28.4, 0.8, 0.8, 3.6);
+  bookshelf(9.65, -20, 3.6, -Math.PI / 2);
+  sideboard(9.61, -26.5, -Math.PI / 2, 3.6, 1.6);
+  round(0.06, 1.35, 1.1, 9.85, 5.65, -26.5, mats.rust);
+  round(0.015, 1.22, 0.98, 9.81, 5.65, -26.5, mats.glass);
+  armchair(3.1, -21.4, 0, 3.6);
+  radiator(2.42, -26.6, Math.PI / 2, 3.6);
   // Attic rafters and archive.
   for (const z of [-36, -39, -42]) {
     link([-5.8, 9.35, z], [0, 10.05, z], 0.12, mats.wood);
     link([0, 10.05, z], [5.8, 9.35, z], 0.12, mats.wood);
   }
   table(0, -41.7, 2.8, 0.8, 6.8);
+  cabinet(-5.6, -40, 6.8, Math.PI / 2);
+  cabinet(5.6, -40, 6.8, -Math.PI / 2);
   for (const x of [-4, 4]) {
-    cabinet(x, -40, 6.8);
     round(1, 0.7, 0.8, x, 7.15, -37, mats.wood);
+    solid(x, -37, 1, 0.8, undefined, 6.8, 0.7);
   }
+  trunk(-3.9, -42.59, 0, 6.8);
+  trunk(3.9, -42.59, 0, 6.8);
+  for (const [x, z, s] of [
+    [-2.6, -37.4, 0.66],
+    [2.5, -37.6, 0.78],
+    [4.8, -41.2, 0.6],
+  ])
+    crate(x, z, s, 6.8, rnd());
+  shelfUnit(-5.55, -36.6, Math.PI / 2, 6.8, 1.4);
   paper(0.5, 7.72, -41.7, "I REMEMBER\nTHE CAMERA");
   // Boiler and workshop occupy the lower chamber's outer edge.
-  cylinder(0.7, 2.1, 26, -2.45, -9, mats.metal);
+  cylinder(0.7, 2.1, 27.2, -2.45, -9, mats.metal);
   for (const yy of [-3.3, -1.6]) {
     const ring = mesh(
       new THREE.TorusGeometry(0.71, 0.045, 6, 24),
       mats.rust,
-      26,
+      27.2,
       yy,
       -9,
     );
     ring.rotation.x = Math.PI / 2;
   }
-  link([26, -1.4, -9], [26, -0.5, -9], 0.17, mats.metal);
-  link([26, -0.5, -9], [27.8, -0.5, -9], 0.17, mats.metal);
-  solid(26, -9, 1.4, 1.4);
-  table(26, -20, 2.4, 0.85, -3.6);
-  bottle(25.7, -2.65, -20);
-  cabinet(17.5, -7, -3.6, 0, true);
+  link([27.2, -1.4, -9], [27.2, -0.5, -9], 0.17, mats.metal);
+  link([27.2, -0.5, -9], [27.2, -0.5, -11.6], 0.17, mats.metal);
+  solid(27.2, -9, 1.4, 1.4);
+  table(27.45, -20, 2.4, 0.85, -3.6, Math.PI / 2);
+  bottle(27.3, -2.65, -20);
+  cabinet(16.4, -7, -3.6, Math.PI / 2, true);
+  shelfUnit(16.35, -11, Math.PI / 2, -3.6);
+  crate(18.6, -19.6, 0.75, -3.6, 0.4);
+  crate(18.4, -18.4, 0.6, -3.6);
+  // West wing — conservatory.
+  table(-14.5, 9.4, 2.4, 1.1);
+  for (const x of [-15.5, -13.5]) {
+    chair(x, 10.6, x, 9.4);
+    chair(x, 8.2, x, 9.4);
+  }
+  for (const [x, z, s] of [
+    [-11.2, 13, 1.15],
+    [-17.6, 13.1, 0.95],
+    [-11.4, 5.4, 1],
+    [-17.4, 6.2, 1.1],
+  ])
+    plant(x, z, 0, s);
+  sideboard(-14.5, 13.61, Math.PI);
+  bottle(-14.9, 0.99, 13.5);
+  armchair(-17.2, 9.6, Math.PI / 2);
+  radiator(-18.83, 12.4, Math.PI / 2);
+  rug(-14.5, 9.4, 3.6, 3);
+  pictureFrame(-10.13, 1.85, 11.4, -Math.PI / 2, "THE GLASSHOUSE", 0.85, 0.66);
+  // West wing — library.
+  for (const [x, z, rot] of [
+    [-11.5, 3.65, Math.PI],
+    [-17.5, 3.65, Math.PI],
+    [-11.5, -5.65, 0],
+    [-17.5, -5.65, 0],
+    [-18.65, -3.6, Math.PI / 2],
+    [-18.65, 1.6, Math.PI / 2],
+  ])
+    bookshelf(x, z, 0, rot);
+  const reading = table(-14.5, -1, 2.2, 1.2);
+  books(reading, -0.8, 0.93, 0, 7);
+  lamp(-13.6, 0.92, -1);
+  chair(-14.5, 0.3, -14.5, -1);
+  chair(-14.5, -2.3, -14.5, -1);
+  armchair(-11.6, -1.4, -Math.PI / 2);
+  rug(-14.5, -1, 4, 3.4);
+  paper(-15.2, 0.925, -0.7, "17 OCT\nDO NOT LOOK");
+  // West wing — laundry.
+  for (const x of [-12.2, -13.3, -14.4]) washTub(x, -16.55, 0);
+  shelfUnit(-18.65, -8.6, Math.PI / 2, 0, 1.7);
+  shelfUnit(-18.65, -14.6, Math.PI / 2, 0, 1.7);
+  cabinet(-10.4, -12.4, 0, -Math.PI / 2, true);
+  crate(-16.6, -7.2, 0.7);
+  radiator(-11.5, -6.17, Math.PI);
+  for (let i = 0; i < 4; i++)
+    link(
+      [-18.5, 2.5, -13.4 + i * 1.7],
+      [-10.5, 2.5, -13.4 + i * 1.7],
+      0.012,
+      mats.rust,
+    );
+  // East wing — parlour.
+  fireplace(14.5, 13.62, Math.PI);
+  armchair(13.4, 12.2, 0);
+  armchair(15.6, 12.2, 0);
+  rug(14.5, 10.9, 4.2, 3.4);
+  const parlourTable = table(14.5, 10.9, 1.6, 0.9);
+  parlourTable.scale.y = 0.6;
+  books(parlourTable, -0.5, 0.93, 0, 3);
+  sideboard(18.61, 6.4, -Math.PI / 2, 0, 1.8);
+  plant(11, 13);
+  plant(18.2, 12.8);
+  radiator(10.17, 8, Math.PI / 2);
+  pictureFrame(10.13, 1.85, 6.2, Math.PI / 2, "BLACKWOOD HOUSE", 0.9, 0.7);
+  // East wing — gallery of the family's own photographs.
+  for (const [z, text] of [
+    [-4.6, "I / THE ORCHARD"],
+    [-2.4, "II / THE STAIR"],
+    [2.2, "III / THE LANDING"],
+  ])
+    pictureFrame(10.13, 1.85, z, Math.PI / 2, text);
+  for (const [z, text] of [
+    [-4.6, "IV / THE CELLAR"],
+    [2.2, "V / NO FACE AT ALL"],
+  ])
+    pictureFrame(18.87, 1.85, z, -Math.PI / 2, text);
+  for (const [x, z, bust] of [
+    [13, -3.6, true],
+    [16, -3.6, false],
+    [13, 1.6, false],
+    [16, 1.6, true],
+  ]) {
+    round(0.5, 1.05, 0.5, x, 0.52, z, mats.wall);
+    round(0.62, 0.06, 0.62, x, 1.07, z, mats.dark);
+    solid(x, z, 0.62, 0.62, undefined, 0, 1.1);
+    if (bust) {
+      ball(0.15, 0.2, 0.15, x, 1.3, z, mats.ivory);
+      ball(0.11, 0.09, 0.11, x, 1.15, z, mats.ivory);
+    } else round(0.34, 0.26, 0.22, x, 1.23, z, mats.rust, scene, 0.03);
+  }
+  round(1.6, 0.12, 0.5, 14.5, 0.46, -1, mats.wood);
+  for (const a of [-0.6, 0.6])
+    box(0.12, 0.4, 0.44, 14.5 + a, 0.2, -1, mats.wood);
+  solid(14.5, -1, 1.7, 0.55, undefined, 0, 0.55);
+  plant(18.3, -5.2, 0, 1.1);
+  // Upper floor — guest room.
+  bed(-8.6, -33.64, 3.6);
+  table(-6.9, -34.55, 0.7, 0.7, 3.6);
+  lamp(-6.9, 4.52, -34.55);
+  cabinet(-2.6, -32.4, 3.6, -Math.PI / 2, true);
+  armchair(-4.4, -32.2, 0, 3.6);
+  sideboard(-4.6, -29.39, Math.PI, 3.6, 1.5);
+  rug(-6.6, -31.6, 3, 2.6, 3.6);
+  radiator(-3.2, -34.73, 0, 3.6);
+  // Upper floor — bathroom.
+  tub(2.73, -31.6, Math.PI / 2, 3.6);
+  round(1.2, 0.2, 0.6, 8.5, 4.46, -34.6, mats.ivory, scene, 0.09);
+  ball(0.44, 0.07, 0.2, 8.5, 4.58, -34.58, mats.dark);
+  cylinder(0.12, 0.62, 8.5, 4.01, -34.6, mats.ivory);
+  link([8.5, 4.58, -34.82], [8.5, 4.84, -34.82], 0.024, mats.brass);
+  link([8.5, 4.84, -34.82], [8.5, 4.84, -34.62], 0.024, mats.brass);
+  round(1.05, 1.15, 0.06, 8.5, 5.5, -34.87, mats.rust);
+  round(0.93, 1.03, 0.015, 8.5, 5.5, -34.83, mats.glass);
+  solid(8.5, -34.6, 1.25, 0.62, undefined, 3.6, 1.1);
+  toilet(9.41, -32.6, -Math.PI / 2, 3.6);
+  cabinet(2.6, -33.6, 3.6, Math.PI / 2, true);
+  shelfUnit(4.5, -29.35, Math.PI, 3.6, 1.4);
+  radiator(6, -29.17, Math.PI, 3.6);
+  // Cellar — cold store behind the ritual chamber.
+  for (const z of [-24, -26, -28]) {
+    shelfUnit(16.35, z, Math.PI / 2, -3.6);
+    shelfUnit(27.65, z, -Math.PI / 2, -3.6);
+  }
+  for (const [x, z, s] of [
+    [20, -28.6, 0.85],
+    [21.4, -28.4, 0.7],
+    [24.6, -28.8, 0.9],
+    [19.4, -24.2, 0.75],
+  ])
+    crate(x, z, s, -3.6, rnd());
+  cabinet(22, -29.6, -3.6, 0, true);
+  table(25.5, -25, 2.2, 0.9, -3.6);
+  link([19, -0.7, -26], [26, -0.7, -26], 0.035, mats.metal);
+  for (let i = 0; i < 7; i++) {
+    const hx = 19.4 + i;
+    link([hx, -0.72, -26], [hx, -1.24, -26], 0.018, mats.metal);
+    const hook = mesh(
+      new THREE.TorusGeometry(0.09, 0.017, 6, 14),
+      mats.metal,
+      hx,
+      -1.3,
+      -26,
+    );
+    hook.rotation.y = Math.PI / 2;
+  }
   // Circular ritual seal is a drawn world surface, never a navigation overlay.
   const seal = document.createElement("canvas");
   seal.width = seal.height = 1024;
@@ -961,7 +1498,7 @@ export function buildWorld(scene) {
   sealMesh.rotation.x = -Math.PI / 2;
   for (let i = 0; i < 4; i++) {
     const x = 19.75 + i * 1.5,
-      z = -21.5;
+      z = -21.84;
     round(1.05, 1.25, 0.13, x, -1.95, z, mats.wood);
     round(0.84, 1.04, 0.025, x, -1.95, z + 0.08, mats.dark);
     sign(["I", "II", "III", "IV"][i], x, -2.83, z + 0.04, 0.4, 0.25, 0, {
@@ -1089,11 +1626,13 @@ export function buildWorld(scene) {
   });
   // Supplies vary within safe rooms. An emergency cache prevents a film softlock.
   const supplies = [
-    [-5.5, 0.96, 8.5],
-    [-8.7, 0.97, -1.1],
+    [-4.3, 0.96, 13.55],
+    [-9.35, 0.97, -1.1],
     [5.7, 0.97, 10.3],
-    [9, 4.57, -27.5],
-    [26, -2.63, -20],
+    [6.9, 4.57, -28.4],
+    [27.4, -2.63, -20.6],
+    [-14.5, 0.97, -0.6],
+    [14.5, 0.57, -1],
   ];
   for (let i = 0; i < supplies.length; i++) {
     const [x, y, z] = supplies[i],
@@ -1124,10 +1663,10 @@ export function buildWorld(scene) {
     mats.rust,
     7,
     0.22,
-    -15.95,
+    -16.1,
   );
   key.rotation.x = Math.PI / 2;
-  link([7, 0.22, -15.95], [7.17, 0.22, -15.95], 0.015, mats.rust);
+  link([7, 0.22, -16.1], [7.17, 0.22, -16.1], 0.015, mats.rust);
   interactables.push({
     type: "key",
     position: key.position.clone(),
@@ -1335,11 +1874,11 @@ export function buildWorld(scene) {
   const observer = apparition();
   observer.visible = false;
   const child = apparition("child");
-  child.position.set(-6, 3.6, -26);
+  child.position.set(-6.1, 3.6, -27.1);
   child.visible = false;
   photoOnly.push(child);
   const woman = apparition("woman");
-  woman.position.set(7, 0.72, -16.62);
+  woman.position.set(7, 0.72, -16.78);
   woman.scale.setScalar(0.7);
   woman.visible = false;
   photoOnly.push(woman);
@@ -1350,7 +1889,7 @@ export function buildWorld(scene) {
   const crawler = apparition();
   crawler.scale.set(0.55, 0.38, 0.55);
   crawler.rotation.x = -0.6;
-  crawler.position.set(-7.8, 0.13, 11.6);
+  crawler.position.set(-6.5, 0.13, 12.5);
   crawler.visible = false;
   photoOnly.push(crawler);
   // Photo-only writing is rendered in the same camera projection as the actual photograph.
@@ -1456,8 +1995,11 @@ export function buildWorld(scene) {
     g.rotation.set(-0.13, -0.18, -0.05);
     return g;
   }
-  const lights = [];
-  for (let i = 0; i < 7; i++) {
+  // The wings added rooms without adding lamps, so a few more live sources
+  // follow the player around the larger plan.
+  const LIVE_LIGHTS = 9,
+    lights = [];
+  for (let i = 0; i < LIVE_LIGHTS; i++) {
     const l = new THREE.PointLight(0xbce2c2, 0, 12, 2);
     scene.add(l);
     lights.push(l);
@@ -1612,8 +2154,8 @@ export function buildWorld(scene) {
               (b.y - position.y) ** 2 +
               (b.z - position.z) ** 2),
         )
-        .slice(0, 7);
-      for (let i = 0; i < 7; i++) {
+        .slice(0, LIVE_LIGHTS);
+      for (let i = 0; i < LIVE_LIGHTS; i++) {
         const f = nearest[i],
           l = lights[i];
         if (!f) continue;

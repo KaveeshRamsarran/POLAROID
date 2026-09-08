@@ -113,7 +113,7 @@ try {
     };
     return { chairs, overlaps, rays, stairObstructions, closedDoorBypasses };
   });
-  assert.equal(geometry.chairs.length, 7);
+  assert.equal(geometry.chairs.length, 15);
   assert.ok(
     geometry.chairs.every((dot) => dot > 0.999),
     "Every chair faces its table",

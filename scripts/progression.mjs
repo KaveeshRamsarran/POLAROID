@@ -70,6 +70,14 @@ try {
     [0, -38],
     [20, -12],
     [0, 18],
+    [-14.5, 9],
+    [-14.5, -1],
+    [-14.5, -12],
+    [14.5, 9],
+    [14.5, -1],
+    [-6, -32],
+    [6, -32],
+    [22, -26],
   ])
     assert.ok(
       findPath({ x: 0, z: 11 }, { x, z }, solids).length,
@@ -129,7 +137,7 @@ try {
     true,
     "Cellar key pickup",
   );
-  await checkpoint(-5.5, -23.5, Math.atan2(-(-7 + 5.5), -(-26 + 23.5)));
+  await checkpoint(-5.5, -23.5, Math.atan2(-(-7 + 5.5), -(-27.3 + 23.5)));
   await shoot("child");
   await checkpoint(0, -27.4, 0);
   await page.keyboard.press("e");
