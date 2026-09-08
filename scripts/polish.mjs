@@ -148,16 +148,29 @@ try {
     const { Soundscape, footSurface } = await import("/src/audio.js");
     const rms = (data, a, b) =>
       Math.sqrt(data.slice(a, b).reduce((sum, v) => sum + v * v, 0) / (b - a));
-    async function render(material, crouched = false) {
+    // Waiting on sound.ready renders the supplied recordings rather than the
+    // synthesized fallbacks they replace.
+    async function render(material, crouched = false, shutter = false) {
       const context = new OfflineAudioContext(2, 48000 * 2, 48000),
         sound = new Soundscape();
       sound.start(context);
+      await sound.ready;
       if (material) sound.foot({ x: 0, y: 0, z: 0 }, material, false, crouched);
+      if (shutter) sound.shutter();
       const output = await context.startRendering(),
         data = output.getChannelData(0);
+      let peak = 0;
+      for (const sample of data) peak = Math.max(peak, Math.abs(sample));
       return {
+        recorded: !!sound.stepSamples && !!sound.shutterSample,
+        footfalls: sound.stepSamples?.length ?? 0,
+        // A recorded footfall is a short transient, so loudness is measured at
+        // its peak and across the impact rather than averaged over half a second.
+        peak,
+        impact: rms(data, 0, 7200),
         rms: rms(data, 0, 24000),
         tail: rms(data, 60000, 90000),
+        late: rms(data, 78000, 96000),
         signature: Array.from(data.slice(1000, 1020)),
       };
     }
@@ -166,10 +179,12 @@ try {
     for (const material of ["wood", "tile", "concrete", "metal"])
       walking[material] = await render(material);
     const crouch = await render("wood", true);
+    const shutter = await render(null, false, true);
     return {
       idle,
       walking,
       crouch,
+      shutter,
       surfaces: [
         footSurface(0, -32),
         footSurface(7, 10),
@@ -179,16 +194,26 @@ try {
     };
   });
   assert.equal(audio.idle.rms, 0, "Idle soundscape is silent");
+  assert.equal(audio.idle.peak, 0, "Idle soundscape is exactly silent");
   assert.deepEqual(audio.surfaces, ["metal", "tile", "wood", "concrete"]);
+  assert.ok(audio.idle.recorded, "Supplied shutter and walk recordings decode");
+  assert.ok(
+    audio.idle.footfalls >= 4,
+    `Walk recording split into separate footfalls (${audio.idle.footfalls})`,
+  );
+  assert.ok(audio.shutter.peak > 0.02, "Recorded camera shutter is audible");
+  assert.ok(audio.shutter.late < 0.00001, "Camera shutter ends without a tail");
   for (const [material, result] of Object.entries(audio.walking)) {
-    assert.ok(result.rms > 0.005, `${material} footstep is audible`);
+    assert.ok(result.peak > 0.02, `${material} footstep is audible`);
+    assert.ok(result.impact > 0.002, `${material} footstep carries an impact`);
     assert.ok(
       result.tail < 0.00001,
       `${material} footstep ends without a noise loop`,
     );
   }
   assert.ok(
-    audio.crouch.rms < audio.walking.wood.rms * 0.5,
+    audio.crouch.peak < audio.walking.wood.peak * 0.5 &&
+      audio.crouch.impact < audio.walking.wood.impact * 0.5,
     "Crouching is quieter",
   );
   assert.equal(

@@ -1,4 +1,6 @@
 import { regionAt, seededRandom } from "./logic.js";
+import shutterUrl from "./sfx/camera-shutter.mp3";
+import footstepUrl from "./sfx/footstep-concrete.mp3";
 
 export function footSurface(x, z) {
   const room = regionAt(x, z);
@@ -12,7 +14,30 @@ export function footSurface(x, z) {
   return "concrete";
 }
 
+// A single concrete walk recording carries every floor. Playback rate and one
+// filter give each surface its own voice; concrete plays the sample untouched.
+export const surfaceVoice = {
+  concrete: { rate: 1, level: 1, filter: null },
+  wood: {
+    rate: 0.93,
+    level: 1.08,
+    filter: { type: "lowpass", frequency: 2050, Q: 0.85 },
+  },
+  tile: {
+    rate: 1.15,
+    level: 0.92,
+    filter: { type: "highshelf", frequency: 3100, gain: 7.5 },
+  },
+  metal: {
+    rate: 1.04,
+    level: 1,
+    filter: { type: "peaking", frequency: 1720, Q: 3.4, gain: 10 },
+  },
+};
+
 // Finite heel / sole / toe impacts, with different resonances for each surface.
+// These play until the recording decodes, and stay as the fallback if it cannot
+// be fetched at all.
 export function footBuffer(context, material, variant = 0) {
   const parameters = {
     wood: [112, 238, 0.13, 1800],
@@ -58,6 +83,99 @@ export function footBuffer(context, material, variant = 0) {
   return buffer;
 }
 
+const STEP_LEAD = 0.002, // transient kept at the very front of each slice
+  STEP_LIMIT = 0.5, // hard cap, so one step can never run into the next
+  STEP_FADE = 0.035, // taper to true silence, leaving no tail behind
+  STEP_VARIANTS = 16;
+
+// The supplied walk is a continuous stride, so split it on its impacts. A step
+// then plays once per footfall instead of looping a whole walk cycle.
+export function sliceSteps(context, recording) {
+  const rate = recording.sampleRate,
+    channels = recording.numberOfChannels;
+  const mono = new Float32Array(recording.length);
+  for (let channel = 0; channel < channels; channel++) {
+    const data = recording.getChannelData(channel);
+    for (let i = 0; i < mono.length; i++) mono[i] += data[i] / channels;
+  }
+  // Peak-following envelope: instant attack, 4 ms release.
+  const release = Math.exp(-1 / (rate * 0.004)),
+    envelope = new Float32Array(mono.length);
+  let level = 0,
+    peak = 0;
+  for (let i = 0; i < mono.length; i++) {
+    level = Math.max(Math.abs(mono[i]), level * release);
+    envelope[i] = level;
+    if (level > peak) peak = level;
+  }
+  if (!peak) return null;
+  const loud = peak * 0.22,
+    quiet = peak * 0.06,
+    gap = Math.round(rate * 0.11);
+  // An impact is only counted once the envelope has fallen quiet again, so a
+  // long decay cannot register as a second footfall.
+  const onsets = [];
+  let armed = true;
+  for (let i = 0; i < envelope.length; i++) {
+    if (armed && envelope[i] >= loud) {
+      onsets.push(i);
+      armed = false;
+    } else if (
+      !armed &&
+      envelope[i] < quiet &&
+      i - onsets[onsets.length - 1] > gap
+    )
+      armed = true;
+  }
+  const lead = Math.round(rate * STEP_LEAD),
+    limit = Math.round(rate * STEP_LIMIT),
+    fade = Math.round(rate * STEP_FADE),
+    rise = Math.max(1, Math.round(rate * 0.001)),
+    normalise = 0.92 / peak,
+    shortest = rate * 0.03;
+  const steps = [];
+  for (let n = 0; n < onsets.length && steps.length < STEP_VARIANTS; n++) {
+    const start = Math.max(0, onsets[n] - lead);
+    let end = Math.min(
+      mono.length,
+      onsets[n + 1] ?? mono.length,
+      start + limit,
+    );
+    while (end > start + fade && envelope[end - 1] < quiet * 0.5) end--;
+    const length = end - start;
+    if (length < shortest) continue;
+    const step = context.createBuffer(1, length, rate),
+      data = step.getChannelData(0);
+    for (let i = 0; i < length; i++) {
+      const left = length - i;
+      data[i] =
+        mono[start + i] *
+        normalise *
+        Math.min(1, i / rise) *
+        (left >= fade ? 1 : 0.5 - 0.5 * Math.cos((Math.PI * left) / fade));
+    }
+    steps.push(step);
+  }
+  return steps.length ? steps : null;
+}
+
+// One fetch per file, shared by every context. decodeAudioData takes ownership
+// of its input, so each decode works on its own copy.
+const downloads = new Map();
+function decode(context, url) {
+  if (!downloads.has(url))
+    downloads.set(
+      url,
+      fetch(url).then((response) => {
+        if (!response.ok) throw new Error(`${url} returned ${response.status}`);
+        return response.arrayBuffer();
+      }),
+    );
+  return downloads
+    .get(url)
+    .then((data) => context.decodeAudioData(data.slice(0)));
+}
+
 export class Soundscape {
   constructor() {
     this.ctx = null;
@@ -65,6 +183,9 @@ export class Soundscape {
     this.musicVolume = 0.35;
     this.effectsVolume = 0.75;
     this.active = false;
+    this.shutterSample = null;
+    this.stepSamples = null;
+    this.ready = Promise.resolve();
   }
   start(context) {
     if (this.ctx) {
@@ -125,6 +246,23 @@ export class Soundscape {
       o.start();
     }
     this.active = true;
+    this.ready = this.load();
+  }
+  // The recorded shutter and footsteps take over as soon as they decode. A
+  // failed fetch is not fatal: the synthesized sounds simply stay in place.
+  async load() {
+    const c = this.ctx;
+    const [shutter, walk] = await Promise.allSettled([
+      decode(c, shutterUrl),
+      decode(c, footstepUrl),
+    ]);
+    if (this.ctx !== c) return;
+    if (shutter.status === "fulfilled") this.shutterSample = shutter.value;
+    else
+      console.warn("POLAROID: shutter recording unavailable.", shutter.reason);
+    if (walk.status === "fulfilled")
+      this.stepSamples = sliceSteps(c, walk.value);
+    else console.warn("POLAROID: footstep recording unavailable.", walk.reason);
   }
   set(settings) {
     this.masterVolume = settings.master;
@@ -222,26 +360,53 @@ export class Soundscape {
     };
   }
   shutter() {
+    // The recording is the whole sound; the synthesized shutter stands in only
+    // while it is still decoding.
+    if (this.shutterSample) return this.playBuffer(this.shutterSample, 0.85);
     this.noise(0.075, 0.8, 11000);
     this.tone(720, 0.09, 0.16, null, "square", 140);
     this.noise(0.12, 0.3, 6500, null, 0.12);
     this.tone(165, 0.8, 0.035, null, "sawtooth", 125, 0.18);
   }
-  playBuffer(buffer, volume, position, rate = 1) {
-    if (!this.ctx) return;
+  playBuffer(buffer, volume, position, rate = 1, shape = null) {
+    if (!this.ctx || !buffer) return;
     const source = this.ctx.createBufferSource(),
       gain = this.ctx.createGain(),
-      out = this.outlet(position);
+      out = this.outlet(position),
+      filter = shape ? this.ctx.createBiquadFilter() : null;
     source.buffer = buffer;
     source.playbackRate.value = rate;
     gain.gain.value = volume;
-    source.connect(gain);
+    if (filter) {
+      filter.type = shape.type;
+      filter.frequency.value = shape.frequency;
+      if (shape.Q !== undefined) filter.Q.value = shape.Q;
+      if (shape.gain !== undefined) filter.gain.value = shape.gain;
+      source.connect(filter);
+      filter.connect(gain);
+    } else source.connect(gain);
     gain.connect(out);
     source.start();
     source.onended = () => {
       source.disconnect();
+      filter?.disconnect();
       gain.disconnect();
       if (out !== this.fx) out.disconnect();
+    };
+  }
+  // A recorded impact voiced for the surface underfoot, or the synthesized one
+  // until the recording is ready.
+  step(material, index) {
+    if (this.stepSamples)
+      return {
+        buffer: this.stepSamples[index % this.stepSamples.length],
+        ...(surfaceVoice[material] || surfaceVoice.concrete),
+      };
+    return {
+      buffer: this.steps[material][index % 4],
+      rate: 1,
+      level: 1,
+      filter: null,
     };
   }
   foot(position, material = "concrete", sprint = false, crouched = false) {
@@ -254,11 +419,13 @@ export class Soundscape {
       x: position.x + Math.cos(yaw) * side,
       z: position.z - Math.sin(yaw) * side,
     };
+    const step = this.step(material, index);
     this.playBuffer(
-      this.steps[material][index % 4],
-      crouched ? 0.12 : sprint ? 0.56 : 0.34,
+      step.buffer,
+      (crouched ? 0.12 : sprint ? 0.56 : 0.34) * step.level,
       source,
-      sprint ? 1.07 : 1,
+      step.rate * (sprint ? 1.07 : 1),
+      step.filter,
     );
   }
   creak(position) {
@@ -294,13 +461,17 @@ export class Soundscape {
     const level = occluded ? 0.24 : 1;
     if (this.entityDistance > (chasing ? 0.85 : 0.65)) {
       this.entityDistance = 0;
+      // Its tread is the same recording, slowed and dulled into something heavier.
+      const step = this.step(
+        "wood",
+        (this.entityStepIndex = (this.entityStepIndex ?? 0) + 1),
+      );
       this.playBuffer(
-        this.steps.wood[
-          (this.entityStepIndex = (this.entityStepIndex ?? 0) + 1) % 4
-        ],
-        0.55 * level,
+        step.buffer,
+        0.55 * level * step.level,
         { ...position, y: position.y - 1.1 },
-        0.7,
+        step.rate * 0.7,
+        step.filter,
       );
       this.noise(0.18, 0.09 * level, 700, position, 0.06);
     }

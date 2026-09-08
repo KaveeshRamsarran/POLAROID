@@ -444,7 +444,7 @@ function openCredits() {
     "credits",
     panel(
       "STILL / HERE",
-      `<p>An interactive ghost story about the things we choose to remember.</p><p class="small">POLAROID<br>Original game, environments, procedural materials & synthesized spatial sound.<br><br>3D rendering — Three.js (MIT)<br>Built with Vite (MIT)<br><br>Visual direction inspired by your reference: damp green walls, exposed utility pipes, exhausted fluorescent light.<br><br>A fictional story. No affiliation with Polaroid Corporation.</p><button id="credits-play" class="filled-button">ENTER THE HOUSE ↗</button>`,
+      `<p>An interactive ghost story about the things we choose to remember.</p><p class="small">POLAROID<br>Original game, environments, procedural materials & synthesized spatial sound.<br>Camera shutter and footsteps — supplied recordings.<br><br>3D rendering — Three.js (MIT)<br>Built with Vite (MIT)<br><br>Visual direction inspired by your reference: damp green walls, exposed utility pipes, exhausted fluorescent light.<br><br>A fictional story. No affiliation with Polaroid Corporation.</p><button id="credits-play" class="filled-button">ENTER THE HOUSE ↗</button>`,
     ),
   );
   $("credits-play").onclick = () => startGame();
