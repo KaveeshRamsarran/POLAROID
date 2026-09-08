@@ -3,100 +3,9 @@ import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.j
 import { mergeGeometries } from "three/addons/utils/BufferGeometryUtils.js";
 import { regions, evidenceDefs, seededRandom, floorAt } from "./logic.js";
 
+import { createSurface, repeatMaterial } from "./materials.js";
+
 const rnd = seededRandom(971017);
-function surface(kind) {
-  const c = document.createElement("canvas");
-  c.width = c.height = 512;
-  const x = c.getContext("2d"),
-    p = x.createImageData(512, 512);
-  const base =
-    kind === "wall"
-      ? [104, 125, 108]
-      : kind === "wood"
-        ? [69, 55, 39]
-        : kind === "metal"
-          ? [64, 77, 66]
-          : kind === "fabric"
-            ? [62, 69, 49]
-            : [77, 84, 72];
-  for (let j = 0; j < 512; j++)
-    for (let i = 0; i < 512; i++) {
-      let n =
-        (rnd() - 0.5) * 34 + Math.sin(i * 0.034) * Math.cos(j * 0.023) * 9;
-      if (kind === "wood")
-        n +=
-          Math.sin(i * 0.24 + Math.sin(j * 0.017) * 2) * 10 +
-          Math.sin(i * 0.7) * 5;
-      if (kind === "fabric") n += (i % 3 === 0 ? 9 : 0) + (j % 3 === 0 ? 7 : 0);
-      const k = (j * 512 + i) * 4;
-      for (let a = 0; a < 3; a++) p.data[k + a] = base[a] + n;
-      p.data[k + 3] = 255;
-    }
-  x.putImageData(p, 0, 0);
-  for (let i = 0; i < 240; i++) {
-    const xx = rnd() * 512,
-      yy = rnd() * 512,
-      r = 4 + rnd() * 48;
-    x.fillStyle = `rgba(${kind === "wall" ? "27,42,30" : "13,20,14"},${rnd() * 0.12})`;
-    x.beginPath();
-    x.ellipse(xx, yy, r, r * (0.3 + rnd()), rnd() * 3, 0, Math.PI * 2);
-    x.fill();
-  }
-  if (kind === "wall") {
-    for (let i = 0; i < 45; i++) {
-      const xx = rnd() * 512,
-        yy = rnd() * 512;
-      x.fillStyle = `rgba(26,44,32,${0.08 + rnd() * 0.15})`;
-      x.fillRect(xx, yy, 1 + rnd() * 6, 20 + rnd() * 200);
-    }
-    for (let i = 0; i < 15; i++) {
-      let xx = rnd() * 512,
-        yy = rnd() * 512;
-      x.strokeStyle = "rgba(29,44,31,.36)";
-      x.lineWidth = 0.6;
-      x.beginPath();
-      x.moveTo(xx, yy);
-      for (let j = 0; j < 12; j++) {
-        xx += (rnd() - 0.5) * 13;
-        yy += rnd() * 13;
-        x.lineTo(xx, yy);
-      }
-      x.stroke();
-    }
-    for (let i = 0; i < 300; i++) {
-      const xx = rnd() * 512,
-        yy = rnd() * 512;
-      x.fillStyle = "rgba(183,182,151,.19)";
-      x.fillRect(xx, yy, rnd() * 10, rnd() * 5);
-    }
-  }
-  if (kind === "floor") {
-    x.strokeStyle = "#222d2460";
-    x.lineWidth = 2;
-    for (let i = 0; i < 512; i += 128) {
-      x.beginPath();
-      x.moveTo(i, 0);
-      x.lineTo(i, 512);
-      x.moveTo(0, i);
-      x.lineTo(512, i);
-      x.stroke();
-    }
-  }
-  if (kind === "wood") {
-    x.strokeStyle = "#151d1670";
-    for (let i = 0; i < 512; i += 85) {
-      x.beginPath();
-      x.moveTo(i, 0);
-      x.lineTo(i, 512);
-      x.stroke();
-    }
-  }
-  const tex = new THREE.CanvasTexture(c);
-  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-  tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 4;
-  return tex;
-}
 export function buildWorld(scene) {
   const solids = [],
     doors = [],
@@ -105,9 +14,14 @@ export function buildWorld(scene) {
     photoOnly = [],
     animated = [],
     windows = [],
-    frames = [];
+    frames = [],
+    architecture = [],
+    chairs = [];
   const textures = Object.fromEntries(
-    ["wall", "wood", "metal", "fabric", "floor"].map((k) => [k, surface(k)]),
+    ["wall", "wood", "metal", "fabric", "floor", "skin"].map((k) => [
+      k,
+      createSurface(k),
+    ]),
   );
   const materialCache = new Map();
   const material = (color, roughness = 0.85, metalness = 0) => {
@@ -120,7 +34,7 @@ export function buildWorld(scene) {
     return materialCache.get(key);
   };
   const mats = {
-    wall: material("#bcc6ab"),
+    wall: material("#b8c2b8"),
     floor: material("#9ca68e", 0.76),
     wood: material("#c1ad85"),
     metal: material("#859785", 0.6, 0.65),
@@ -135,9 +49,9 @@ export function buildWorld(scene) {
     red: material("#743729", 0.6, 0.2),
   };
   for (const k of Object.keys(textures)) {
-    mats[k].map = textures[k];
-    mats[k].bumpMap = textures[k];
-    mats[k].bumpScale = k === "wall" ? 0.045 : 0.024;
+    Object.assign(mats[k], textures[k]);
+    mats[k].roughness = 1;
+    mats[k].normalScale.setScalar(k === "wall" ? 0.55 : 0.7);
   }
   const boxGeo = new THREE.BoxGeometry(1, 1, 1),
     sphereGeo = new THREE.SphereGeometry(1, 18, 14),
@@ -246,16 +160,33 @@ export function buildWorld(scene) {
   function wallSegment(x, z, w, d, y = 0, h = 3.25) {
     const key = `${Math.max(w, d).toFixed(2)},${h.toFixed(2)}`;
     if (!wallMaterials.has(key)) {
-      const mat = mats.wall.clone(),
-        tex = textures.wall.clone();
-      tex.repeat.set(Math.max(w, d) / 3, h / 3);
-      mat.map = tex;
-      mat.bumpMap = tex;
-      wallMaterials.set(key, mat);
+      wallMaterials.set(
+        key,
+        repeatMaterial(mats.wall, Math.max(w, d) / 3, h / 3),
+      );
     }
     box(w, h, d, x, y + h / 2, z, wallMaterials.get(key));
-    box(w, 0.14, d + 0.045, x, y + 0.07, z, mats.dark);
-    box(w, 0.045, d + 0.025, x, y + 1.08, z, mats.metal);
+    // Trim protrudes along the wall thickness, whichever axis the wall follows.
+    const alongX = w > d;
+    box(
+      w + (alongX ? 0 : 0.045),
+      0.14,
+      d + (alongX ? 0.045 : 0),
+      x,
+      y + 0.07,
+      z,
+      mats.dark,
+    );
+    box(
+      w + (alongX ? 0 : 0.025),
+      0.045,
+      d + (alongX ? 0.025 : 0),
+      x,
+      y + 1.08,
+      z,
+      mats.metal,
+    );
+    architecture.push({ type: "wall", x, z, w, d, y, h });
     solid(x, z, w, d, undefined, y, h);
   }
   function wallX(z, a, b, y = 0, gaps = []) {
@@ -280,11 +211,10 @@ export function buildWorld(scene) {
     if (r.ramp) continue;
     const w = r.x2 - r.x1,
       d = r.z2 - r.z1,
-      mat = (r.y > 0 ? mats.wood : mats.floor).clone(),
-      tex = (r.y > 0 ? textures.wood : textures.floor).clone();
-    tex.repeat.set(w / 3, d / 3);
-    mat.map = tex;
-    mat.bumpMap = tex;
+      woodFloor =
+        r.y > 0 ||
+        ["LIVING ROOM", "STUDY", "DINING ROOM", "FRONT PORCH"].includes(r.name),
+      mat = repeatMaterial(woodFloor ? mats.wood : mats.floor, w / 3, d / 3);
     box(w, 0.18, d, (r.x1 + r.x2) / 2, r.y - 0.1, (r.z1 + r.z2) / 2, mat);
     if (r.name !== "FRONT PORCH")
       box(
@@ -311,13 +241,13 @@ export function buildWorld(scene) {
     wallX(z, -10, -2.2, 0, [[-7, -5]]);
     wallX(z, 2.2, 10, 0, [[5, 7]]);
   }
-  wallX(-29, -10, 10, 3.6, [[-2.2, 2.2]]);
+  wallX(-29, -10, 10, 3.6, [[-1.05, 1.05]]);
   wallX(-18, -10, -2.2, 3.6);
   wallX(-18, 2.2, 10, 3.6);
   wallZ(-10, -29, -18, 3.6);
   wallZ(10, -29, -18, 3.6);
-  wallZ(-2.2, -29, -18, 3.6, [[-27, -25]]);
-  wallZ(2.2, -29, -18, 3.6, [[-27, -25]]);
+  wallZ(-2.2, -29, -23, 3.6, [[-27, -25]]);
+  wallZ(2.2, -29, -23, 3.6, [[-27, -25]]);
   function stairs(x, z, width, length, start, rise, axis = "z") {
     const n = 18;
     for (let i = 0; i < n; i++) {
@@ -375,17 +305,37 @@ export function buildWorld(scene) {
   stairs(0, -17, 4.4, 6, 0, 3.6);
   stairs(0, -29, 4.4, 6, 3.6, 3.2);
   stairs(10, -14, 4, 6, 0, -3.6, "x");
-  // Stairwell side walls follow the slope while collision remains continuous.
+  // A single shell per flight removes coincident upstairs / stair wall faces.
   for (const [z, y, rise] of [
     [-17, 0, 3.6],
     [-29, 3.6, 3.2],
-  ])
-    for (let i = 0; i < 6; i++)
-      for (const x of [-2.2, 2.2])
-        wallSegment(x, z - i - 0.5, 0.2, 1, y + (rise * i) / 6, 3.5);
-  for (let i = 0; i < 6; i++)
-    for (const z of [-16, -12])
-      wallSegment(10 + i + 0.5, z, 1, 0.2, (-3.6 * (i + 1)) / 6, 3.5);
+  ]) {
+    for (const x of [-2.2, 2.2]) wallSegment(x, z - 3, 0.2, 6, y, rise + 3.25);
+    box(4.4, 0.12, 6, 0, y + rise + 3.26, z - 3, mats.dark);
+    // Close the view above the lower roof, leaving the lower doorway clear.
+    const h = rise + 0.07;
+    box(
+      4.4,
+      h,
+      0.2,
+      0,
+      y + 3.25 + h / 2,
+      z,
+      repeatMaterial(mats.wall, 4.4 / 3, h / 3),
+    );
+    architecture.push({
+      type: "stair-back",
+      x: 0,
+      z,
+      w: 4.4,
+      d: 0.2,
+      y: y + 3.25,
+      h,
+    });
+  }
+  for (const z of [-16, -12]) wallSegment(13, z, 6, 0.2, -3.6, 6.85);
+  box(6, 0.12, 4, 13, 3.26, -14, mats.dark);
+  box(0.2, 3.6, 4, 16, 1.45, -14, mats.wall);
   wallX(-43, -6, 6, 6.8);
   wallX(-35, -6, 6, 6.8, [[-2.2, 2.2]]);
   wallZ(-6, -43, -35, 6.8);
@@ -393,7 +343,7 @@ export function buildWorld(scene) {
   wallX(-22, 16, 28, -3.6);
   wallX(-6, 16, 28, -3.6);
   wallZ(28, -22, -6, -3.6);
-  wallZ(16, -22, -6, -3.6, [[-16, -12]]);
+  wallZ(16, -22, -6, -3.6, [[-15.05, -12.95]]);
   function door(x, z, rotation, label, y = 0, locked = null, width = 1.7) {
     const g = new THREE.Group();
     g.position.set(x, y, z);
@@ -490,7 +440,7 @@ export function buildWorld(scene) {
   door(2.2, -26, -Math.PI / 2, "BEDROOM", 3.6);
   const atticDoor = door(0, -29, 0, "PRIVATE / ARCHIVE", 3.6, "attic", 2);
   const frontDoor = door(0, 14, Math.PI, "FRONT ENTRANCE", 0, "exit", 1.5);
-  door(15.7, -14, -Math.PI / 2, "CELLAR", -3.6, "basement", 2);
+  door(16, -14, -Math.PI / 2, "CELLAR", -3.6, "basement", 2);
   function fixture(x, y, z, w = 1.5, warm = false) {
     box(w + 0.12, 0.12, 0.4, x, y, z, mats.metal);
     const glow = new THREE.MeshStandardMaterial({
@@ -619,10 +569,11 @@ export function buildWorld(scene) {
     );
     return g;
   }
-  function chair(x, z, rot = 0, y = 0) {
+  function chair(x, z, tableX, tableZ, y = 0) {
     const g = new THREE.Group();
     g.position.set(x, y, z);
-    g.rotation.y = rot;
+    g.rotation.y = Math.atan2(tableX - x, tableZ - z);
+    chairs.push({ x, z, yaw: g.rotation.y, tableX, tableZ });
     scene.add(g);
     round(0.55, 0.1, 0.56, 0, 0.48, 0, mats.wood, g, 0.04);
     for (const a of [-0.22, 0.22])
@@ -832,7 +783,7 @@ export function buildWorld(scene) {
   cylinder(0.035, 0.025, -6, 0.63, 8.51, mats.dark).rotation.x = Math.PI / 2;
   // Study and family documents.
   const desk = table(-8.7, -1, 2.8, 1.1, 0, Math.PI / 2);
-  chair(-7.4, -1, Math.PI / 2);
+  chair(-7.4, -1, -8.7, -1);
   lamp(-8.8, 0.92, -2);
   paper(-8.65, 0.925, -0.4, "MARA\n17 OCT 97");
   books(desk, -1, 0.93, 0, 6);
@@ -869,16 +820,16 @@ export function buildWorld(scene) {
     }
   cabinet(8, 13.5);
   const kt = table(5.7, 10, 1.6, 1.2);
-  chair(5.7, 11.1);
-  chair(4.4, 10, -Math.PI / 2);
+  chair(5.7, 11.1, 5.7, 10);
+  chair(4.4, 10, 5.7, 10);
   bottle(5.4, 0.93, 10);
   paper(6, 0.925, 10.2, "FILM\nKEEP DRY");
   // Dining room and storage.
   table(6, -1, 3, 1.5);
   rug(6, -1, 4.2, 3);
   for (const x of [5, 6.7]) {
-    chair(x, 0.3);
-    chair(x, -2.3, Math.PI);
+    chair(x, 0.3, x, -1);
+    chair(x, -2.3, x, -1);
   }
   for (const x of [5, 6, 7]) {
     cylinder(0.2, 0.025, x, 0.94, -1, mats.ivory);
@@ -1091,19 +1042,27 @@ export function buildWorld(scene) {
       z = -16 + rnd() * 29,
       y = 0.004;
     const p = mesh(
-      new THREE.CircleGeometry(0.05 + rnd() * 0.35, 9),
+      new THREE.CircleGeometry(0.05 + rnd() * 0.35, 48),
       new THREE.MeshStandardMaterial({
         color: "#17281e",
         roughness: 0.19,
         metalness: 0.3,
         transparent: true,
-        opacity: 0.45,
+        opacity: 0.22,
+        depthWrite: false,
       }),
       x,
       y,
       z,
     );
     p.rotation.x = -Math.PI / 2;
+    const edge = p.geometry.attributes.position;
+    for (let j = 1; j < edge.count; j++) {
+      const angle = Math.atan2(edge.getY(j), edge.getX(j));
+      const irregular =
+        1 + Math.sin(angle * 5 + i) * 0.1 + Math.cos(angle * 9) * 0.04;
+      edge.setXY(j, edge.getX(j) * irregular, edge.getY(j) * irregular);
+    }
     p.scale.y = 0.4 + rnd();
   }
   for (let i = 0; i < 25; i++) {
@@ -1178,13 +1137,12 @@ export function buildWorld(scene) {
   function apparition(kind = "observer") {
     const g = new THREE.Group(),
       skin = mats.skin.clone();
-    skin.color.set(kind === "woman" ? "#869384" : "#929783");
-    skin.map = textures.wall;
-    skin.bumpMap = textures.wall;
-    skin.bumpScale = 0.008;
+    skin.color.set(kind === "woman" ? "#a4afa1" : "#a8ad9c");
+    skin.normalScale.setScalar(0.3);
     g.userData.limbs = [];
     const cloth = mats.fabric.clone();
-    cloth.color.set("#424d40");
+    cloth.color.set("#30372f");
+    cloth.normalScale.setScalar(0.35);
     const torso = mesh(
       new THREE.LatheGeometry(
         [
@@ -1207,6 +1165,10 @@ export function buildWorld(scene) {
     torso.scale.z = 0.56;
     const coatVertices = torso.geometry.attributes.position;
     for (let i = 0; i < coatVertices.count; i++) {
+      const angle = Math.atan2(coatVertices.getZ(i), coatVertices.getX(i));
+      const fold = 1 + Math.sin(angle * 11 + coatVertices.getY(i) * 2) * 0.035;
+      coatVertices.setX(i, coatVertices.getX(i) * fold);
+      coatVertices.setZ(i, coatVertices.getZ(i) * fold);
       if (coatVertices.getY(i) < 0.7)
         coatVertices.setY(i, 0.62 + Math.sin(i * 2.37) * 0.055);
     }
@@ -1222,28 +1184,84 @@ export function buildWorld(scene) {
       );
     for (let i = 0; i < 5; i++)
       ball(0.013, 0.013, 0.009, 0.018, 1.32 - i * 0.115, 0.108, mats.rust, g);
-    ball(0.07, 0.14, 0.065, 0, 1.71, 0, skin, g);
-    ball(0.135, 0.21, 0.12, 0, 1.94, 0, skin, g);
-    ball(0.095, 0.12, 0.092, 0, 1.82, 0.04, skin, g);
+    ball(0.065, 0.17, 0.07, 0, 1.73, 0.025, skin, g);
+    const head = new THREE.Group();
+    head.position.set(0, 1.76, 0.035);
+    g.add(head);
+    g.userData.head = head;
+    const skullGeometry = new THREE.SphereGeometry(1, 40, 32);
+    const vertices = skullGeometry.attributes.position;
+    for (let i = 0; i < vertices.count; i++) {
+      const x = vertices.getX(i) * 0.14,
+        y = vertices.getY(i) * 0.225 + 0.18;
+      let z = vertices.getZ(i) * 0.125;
+      if (z > 0) {
+        const orbit = Math.exp(
+          -(((Math.abs(x) - 0.054) / 0.033) ** 2) - ((y - 0.205) / 0.038) ** 2,
+        );
+        z -= orbit * 0.035;
+        z -=
+          Math.exp(
+            -(((Math.abs(x) - 0.076) / 0.025) ** 2) - ((y - 0.13) / 0.04) ** 2,
+          ) * 0.02;
+        z += Math.exp(-(((y - 0.258) / 0.018) ** 2)) * 0.012;
+      }
+      vertices.setXYZ(i, x, y, z);
+    }
+    skullGeometry.computeVertexNormals();
+    mesh(skullGeometry, skin, 0, 0, 0, head);
+    const bruised = skin.clone();
+    bruised.color.set("#989c8a");
+    for (const side of [-1, 1]) {
+      ball(0.03, 0.018, 0.012, side * 0.054, 0.214, 0.098, mats.black, head);
+
+      link(
+        [side * 0.029, 0.247, 0.117],
+        [side * 0.088, 0.245, 0.085],
+        0.011,
+        skin,
+        head,
+      );
+      ball(0.018, 0.035, 0.016, side * 0.133, 0.18, 0, skin, head);
+      // Thin cheek tendons hold the expression taut around the open jaw.
+      link(
+        [side * 0.068, 0.13, 0.102],
+        [side * 0.04, 0.016, 0.1],
+        0.013,
+        skin,
+        head,
+      );
+    }
+    ball(0.027, 0.058, 0.032, 0.003, 0.16, 0.126, skin, head);
+    ball(0.063, 0.065, 0.06, 0.009, 0.025, 0.07, skin, head);
+    ball(0.045, 0.011, 0.012, 0.007, 0.075, 0.137, mats.black, head);
+    for (let i = 0; i < 5; i++) {
+      ball(
+        0.004,
+        0.005 + (i % 2) * 0.002,
+        0.005,
+        (i - 2) * 0.012 + 0.004,
+        0.082 - Math.abs(i - 2) * 0.002,
+        0.148,
+        mats.ivory,
+        head,
+      );
+    }
+    link([-0.027, 0.03, 0.146], [-0.018, -0.025, 0.13], 0.002, bruised, head);
     for (const a of [-1, 1]) {
-      ball(0.033, 0.021, 0.018, a * 0.053, 1.96, 0.108, mats.black, g);
-      ball(0.003, 0.003, 0.004, a * 0.053, 1.961, 0.127, mats.ivory, g);
-      ball(0.052, 0.032, 0.025, a * 0.072, 1.905, 0.09, skin, g);
-      ball(0.022, 0.04, 0.02, a * 0.132, 1.935, 0, skin, g);
       const armStart = g.children.length;
       ball(0.08, 0.07, 0.09, a * 0.18, 1.57, 0, cloth, g);
       link([a * 0.22, 1.55, 0], [a * 0.32, 1.16, 0.035], 0.058, cloth, g);
       ball(0.06, 0.065, 0.06, a * 0.32, 1.16, 0.035, skin, g);
       link([a * 0.32, 1.16, 0.035], [a * 0.39, 0.72, 0.1], 0.043, skin, g);
       ball(0.045, 0.095, 0.023, a * 0.4, 0.67, 0.1, skin, g);
-      for (let f = 0; f < 4; f++)
-        link(
-          [a * 0.4 + (f - 1.5) * 0.018, 0.64, 0.1],
-          [a * 0.4 + (f - 1.5) * 0.023, 0.48 - f * 0.006, 0.12],
-          0.009,
-          skin,
-          g,
-        );
+      for (let f = 0; f < 4; f++) {
+        const x = a * 0.4 + (f - 1.5) * 0.018;
+        const joint = [x + a * 0.012, 0.49 - f * 0.009, 0.12];
+        link([x, 0.64, 0.1], joint, 0.009, skin, g);
+        link(joint, [x + a * 0.008, 0.45 - f * 0.008, 0.17], 0.006, skin, g);
+        ball(0.008, 0.011, 0.009, ...joint, skin, g);
+      }
       link([a * 0.37, 0.7, 0.105], [a * 0.335, 0.63, 0.13], 0.012, skin, g);
       const arm = new THREE.Group();
       arm.position.set(a * 0.22, 1.55, 0);
@@ -1267,28 +1285,37 @@ export function buildWorld(scene) {
       g.add(leg);
       g.userData.limbs.push({ mesh: leg, side: a, type: "leg" });
     }
-    ball(0.022, 0.06, 0.038, 0, 1.89, 0.124, skin, g);
-    ball(0.031, 0.009, 0.009, 0, 1.83, 0.129, mats.black, g);
-    link([-0.025, 1.99, 0.116], [0.015, 1.92, 0.13], 0.002, mats.rust, g);
-    for (let i = 0; i < 16; i++) {
-      const a = (i / 16) * Math.PI * 2,
+    const hairCap = mesh(
+      new THREE.SphereGeometry(1, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.5),
+      mats.dark,
+      0,
+      0.262,
+      -0.022,
+      head,
+    );
+    hairCap.position.set(0, 0.27, 0);
+    hairCap.scale.set(0.15, 0.15, 0.145);
+    for (let i = 0; i < 32; i++) {
+      const a = (i / 32) * Math.PI * 2,
         xx = Math.sin(a) * 0.12,
         zz = Math.cos(a) * 0.1;
       const curve = new THREE.CatmullRomCurve3([
-        new THREE.Vector3(xx * 0.5, 2.11, zz * 0.5),
-        new THREE.Vector3(xx, 2.01, zz),
-        new THREE.Vector3(xx * 1.12, 1.77 + (i % 3) * 0.04, zz - 0.01),
+        new THREE.Vector3(xx * 0.5, 0.385, zz * 0.5),
+        new THREE.Vector3(xx, 0.285, zz),
+        new THREE.Vector3(xx * 1.12, 0.025 + (i % 3) * 0.04, zz - 0.01),
       ]);
       mesh(
-        new THREE.TubeGeometry(curve, 7, 0.004, 3, false),
+        new THREE.TubeGeometry(curve, 9, 0.005, 4, false),
         mats.dark,
         0,
         0,
         0,
-        g,
+        head,
       );
     }
-    g.scale.set(1, 1.11, 1);
+    g.scale.set(0.92, 1.17, 1);
+    head.rotation.z = -0.24;
+    head.rotation.x = 0.1;
     if (kind === "child") g.scale.setScalar(0.6);
     if (kind === "woman") {
       const skirt = mesh(
@@ -1530,6 +1557,8 @@ export function buildWorld(scene) {
   }
   return {
     solids,
+    architecture,
+    chairs,
     doors,
     interactables,
     fixtures,
@@ -1556,11 +1585,18 @@ export function buildWorld(scene) {
       });
     },
     update(dt, t, position, power, storm) {
-      for (const limb of observer.userData.limbs)
+      observer.userData.head.rotation.z = -0.24 + Math.sin(t * 0.71) * 0.035;
+      observer.userData.head.rotation.y = Math.sin(t * 0.43) * 0.12;
+      observer.userData.head.rotation.x = 0.1 + Math.sin(t * 1.7) * 0.025;
+      for (const limb of observer.userData.limbs) {
+        if (limb.type === "arm")
+          limb.mesh.rotation.z =
+            limb.side * (0.06 + Math.sin(t * 1.3 + limb.side) * 0.025);
         limb.mesh.rotation.x =
           Math.sin(t * 5 + (limb.side * Math.PI) / 2) *
           (limb.type === "arm" ? -0.12 : 0.16) *
           (observer.userData.walking ? 1 : 0.1);
+      }
       rain.position.y = -((t * 6) % 3);
       for (const d of doors) {
         d.open = THREE.MathUtils.damp(d.open, d.target, 5, dt);
@@ -1583,7 +1619,8 @@ export function buildWorld(scene) {
         if (!f) continue;
         l.position.set(f.x, f.y, f.z);
         l.color.setHex(f.color);
-        const flicker = Math.sin(t * 39 + i * 2) > 0.975 ? 0.5 : 1;
+        const faulty = Math.sin(t * 0.63 + f.x * 2 + f.z) > 0.992;
+        const flicker = faulty && Math.sin(t * 43) > 0 ? 0.65 : 1;
         l.intensity = f.power * (power ? flicker : 0.025);
         if (f.glow) f.glow.emissiveIntensity = power ? 2.7 * flicker : 0.08;
       }
