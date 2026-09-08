@@ -70,7 +70,7 @@ export class CinemaSound extends Soundscape {
   }
   manager() {
     if (this.managerSample)
-      this.playBuffer(this.managerSample, 0.85, { x: -5.5, y: 1.3, z: 11 });
+      this.playBuffer(this.managerSample, 0.85, { x: -5.5, y: 1.3, z: 20.8 });
   }
   dispose() {
     this.motor?.stop();

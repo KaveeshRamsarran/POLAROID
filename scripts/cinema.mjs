@@ -93,16 +93,12 @@ try {
   );
   await page.goto(base + "/?chapter=last-showing&play=new");
   await enter();
-  await interaction("message", -5.5, 9);
+  await interaction("message", -5.5, 19);
   await close();
-  await interaction("belongings", 5.5, 9);
   await photo("seats", -3.9, -7.5);
   await photo("equipment", 13.3, -2.6);
-  await interaction("exits", -11.7, -18);
-  await interaction("sorted", -18, -1);
-  await close();
   assert((await d()).state.events.ticket);
-  await interaction("ticket", -3.3, 9);
+  await interaction("ticket", -3.3, 19);
   await close();
   await photo("patron", 6.5, 0.2);
   assert((await d()).state.evidence.first);
@@ -116,9 +112,6 @@ try {
   await page.waitForFunction(
     () => window.cinemaDiagnostics.state.events.jamRepaired,
   );
-  await page.keyboard.press("e");
-  await page.click("#motor");
-  await close();
   let state = (await d()).state;
   assert.equal(state.projector.status, "running");
   assert(state.patron.distance > 0);
@@ -130,46 +123,22 @@ try {
   await page.waitForTimeout(700);
   assert.deepEqual((await d()).state, paused);
   await page.click("#resume");
-  state = (await d()).state;
-  await photo("patron", state.patron.x, state.patron.z + 1.1);
-  assert((await d()).state.evidence.opening);
-  await interaction("projector", 13.3, -2.6);
-  await page.click('[data-reel="return"]');
-  await page.click("#motor");
-  await close();
-  state = (await d()).state;
-  await photo("patron", state.patron.x, state.patron.z + 1.1);
-  assert((await d()).state.evidence.return);
-  await interaction("records", -19, -1.2);
-  await close();
-  await interaction("reference", -12, -12);
+  await interaction("sorted", -18, -1);
   await close();
   await interaction("projector", 13.3, -2.6);
   await page.click('[data-reel="incident"]');
-  await page.click("#motor");
-  await close();
+  await page.waitForFunction(
+    () => window.cinemaDiagnostics.state.projector.status === "running",
+  );
   await photo("doorway", -11.6, -18);
   assert((await d()).state.evidence.doorway);
-  await photo("figure", -7, -18.5);
-  assert((await d()).state.evidence.figure);
   await photo("ada", -8.8, -22.1);
   assert((await d()).state.evidence.ada);
-  await checkpoint(0, -10, { x: 0, y: 3.15, z: -19.7 });
-  await page.waitForFunction(
-    () => window.cinemaDiagnostics.state.elapsed % 14 > 10.2,
-  );
-  await page.keyboard.press("c");
-  await page.waitForTimeout(100);
-  assert((await d()).state.evidence.frame);
   await interaction("drawer", -18, -7.8);
-  await page.fill("#drawer-code", "0817");
-  await page.click("#drawer-open");
   assert((await d()).state.items.splice);
   await interaction("assemble", 15.5, -2.8);
   await page.click("#final-start");
   assert.equal((await d()).state.activeReel, "complete");
-  await photo("evacuation", -12, -20.5);
-  assert((await d()).state.evidence.evacuation);
   await interaction("exit", -11.6, -18);
   assert((await d()).state.events.released);
   await page.waitForFunction(
@@ -207,7 +176,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: catalogue → first print → jam → reel comparison → service/key/frame puzzles → splice → exit → ending; pause, motor anchoring, anthology isolation.",
+    "PASS: three survey tasks, first print, jam repair, one investigation reel, two photo clues, missing film, exit and ending; pause and save isolation.",
   );
 } catch (error) {
   await page.screenshot({ path: "artifacts/cinema-failure.png" });

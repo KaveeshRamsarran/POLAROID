@@ -2,121 +2,225 @@
   position: fixed;
   inset: 0;
   overflow: auto;
-  padding: 34px 5vw 24px;
-  background:
-    radial-gradient(ellipse at 65% 10%, #28332c70, transparent 65%), #090e0c;
+  padding: 38px 5vw 30px;
   z-index: 6;
+  background: #080d0b;
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  grid-template-rows: auto 1fr auto;
+  gap: 45px 7vw;
+}
+.menu-backgrounds,
+.menu-backgrounds img,
+.menu-shade {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.menu-backgrounds {
+  position: fixed;
+}
+.menu-backgrounds img {
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.8s ease;
+  filter: saturate(0.7) brightness(0.78);
+}
+.menu-backgrounds img.active {
+  opacity: 1;
+}
+.menu-shade {
+  position: fixed;
+  background:
+    linear-gradient(
+      90deg,
+      #040a08eb 0%,
+      #040a0860 47%,
+      #040a08c9 75%,
+      #040a08ed
+    ),
+    linear-gradient(
+      0deg,
+      #040a08c9,
+      transparent 30%,
+      transparent 70%,
+      #040a087d
+    );
+}
+.anthology > header,
+.anthology > footer,
+.anthology-title,
+.chapter-grid {
+  position: relative;
+  z-index: 1;
 }
 .anthology header,
 .anthology footer {
+  grid-column: 1/-1;
   display: flex;
   justify-content: space-between;
-  gap: 24px;
   align-items: center;
+  gap: 20px;
   font: 10px monospace;
   letter-spacing: 2px;
-  color: #9aa396;
+  color: #a5ada0;
 }
 .anthology-title {
-  margin: 38px 0 28px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  align-items: end;
-}
-.anthology-title .eyebrow {
-  grid-column: 1/-1;
+  align-self: center;
+  padding-bottom: 40px;
 }
 .anthology-title h1 {
-  font-size: clamp(50px, 6.5vw, 100px);
+  font-size: clamp(70px, 9vw, 145px);
   letter-spacing: -5px;
-  margin: 6px 0 0;
+  margin: 20px 0;
 }
 .anthology-title p {
-  justify-self: end;
-  line-height: 1.7;
-  font-family: Georgia, serif;
-  color: #b5b8a8;
+  font:
+    clamp(22px, 2.1vw, 30px) / 1.5 Georgia,
+    serif;
+  color: #d3d6c7;
 }
-.chapter-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 28px;
-  max-width: 1600px;
-  margin: auto;
-}
-.chapter-card {
-  border: 1px solid #65715b55;
-  background: #171d1760;
-  box-shadow: 0 20px 80px #0004;
-}
-.chapter-art {
-  height: clamp(170px, 27vh, 320px);
-  position: relative;
-  overflow: hidden;
-  background: linear-gradient(110deg, #354339, #090e0a);
-}
-.cinema .chapter-art {
-  background: linear-gradient(110deg, #5a302c, #171110);
-}
-.chapter-art img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  filter: saturate(0.7) brightness(0.72);
-  transition: transform 1s;
-}
-.chapter-card:hover .chapter-art img {
-  transform: scale(1.025);
-}
-.chapter-art span {
-  position: absolute;
-  bottom: 17px;
-  left: 25px;
+.anthology-title #menu-location {
   font: 10px monospace;
   letter-spacing: 2px;
-  color: #efead9;
+  color: #aeb49e;
 }
-.chapter-copy {
-  padding: 25px 28px;
+.anthology-title .menu-rule {
+  margin: 30px 0;
+  width: 60px;
+  background: #b7aa87;
 }
-.chapter-copy h2 {
-  font-size: clamp(22px, 2.2vw, 34px);
-  letter-spacing: -1px;
-  margin: 12px 0;
+.chapter-grid {
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  width: min(470px, 100%);
+  justify-self: end;
 }
-.chapter-copy p {
-  font:
-    16px/1.7 Georgia,
-    serif;
-  color: #b3b7a9;
-  max-width: 430px;
-  min-height: 55px;
+.chapter-grid > .eyebrow {
+  margin-bottom: 24px;
 }
-.chapter-copy small {
+.chapter-card {
+  padding: 24px 0 28px;
+  border-top: 1px solid #b6b9a540;
+  opacity: 0.62;
+  transition: opacity 0.35s;
+}
+.chapter-card.selected,
+.chapter-card:focus-within {
+  opacity: 1;
+}
+.chapter-name {
+  text-align: left;
+  padding: 0;
+  width: 100%;
+}
+.chapter-name small,
+.chapter-progress {
   font: 10px monospace;
-  letter-spacing: 1.5px;
-  color: #a9af9a;
+  letter-spacing: 2px;
+}
+.chapter-name h2 {
+  font-size: clamp(21px, 2.4vw, 35px);
+  font-weight: 400;
+  letter-spacing: 1px;
+  margin: 10px 0;
+}
+.chapter-name h2:after {
+  content: "\2192";
+  float: right;
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: 0.3s;
+}
+.selected .chapter-name h2:after {
+  opacity: 1;
+  transform: none;
+}
+.chapter-card p {
+  font:
+    15px/1.7 Georgia,
+    serif;
+  color: #c2c6b7;
+  margin: 6px 0 16px;
+}
+.chapter-progress {
+  color: #adb69e;
 }
 .chapter-actions {
   display: flex;
+  gap: 30px;
   align-items: center;
-  gap: 25px;
-  margin-top: 24px;
+  margin-top: 20px;
   font: 11px monospace;
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
 }
-.chapter-actions .filled-button {
-  padding: 14px 22px;
-  margin: 0;
+.chapter-actions a {
+  padding: 8px 0;
+  border-bottom: 1px solid #bdc5af80;
 }
-.cinema .filled-button {
-  background: #a4644e;
+.chapter-actions a:hover {
+  color: #e9ca9c;
 }
-.anthology footer {
-  margin-top: 27px;
+.chapter-actions button {
+  padding: 8px 0;
 }
 .muted {
   opacity: 0.35;
+}
+@media (max-width: 800px) {
+  .anthology {
+    grid-template-columns: 1fr;
+    gap: 25px;
+    padding: 26px 7vw;
+  }
+  .anthology header span {
+    display: none;
+  }
+  .anthology-title {
+    padding-bottom: 0;
+  }
+  .anthology-title h1 {
+    font-size: 76px;
+    margin: 14px 0;
+  }
+  .anthology-title p {
+    font-size: 21px;
+  }
+  .anthology-title .menu-rule {
+    margin: 15px 0;
+  }
+  .chapter-grid {
+    width: 100%;
+    justify-self: start;
+  }
+  .chapter-card {
+    padding: 15px 0;
+  }
+  .chapter-grid > .eyebrow {
+    margin-bottom: 12px;
+  }
+  .chapter-card p {
+    margin: 4px 0 10px;
+  }
+  .chapter-actions {
+    margin-top: 10px;
+  }
+  .anthology footer {
+    flex-wrap: wrap;
+  }
+  .menu-shade {
+    background: #040a08b5;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu-backgrounds img,
+  .chapter-card,
+  .chapter-name h2:after {
+    transition: none;
+  }
 }
 .cinema-game {
   --red: #be785c;
@@ -207,34 +311,6 @@
     serif;
   color: #bdb7a5;
 }
-@media (max-width: 800px) {
-  .chapter-grid {
-    grid-template-columns: 1fr;
-  }
-  .anthology-title {
-    display: block;
-  }
-  .anthology-title p {
-    font-size: 15px;
-  }
-  .anthology header span {
-    display: none;
-  }
-  .anthology footer {
-    flex-wrap: wrap;
-  }
-  .chapter-actions {
-    gap: 15px;
-  }
-  .projector-status {
-    right: 20px;
-    font-size: 10px;
-  }
-  .story-launch h1 {
-    font-size: 40px;
-  }
-}
-
 .cinema-game #overlay-content {
   width: min(850px, 92vw);
   max-height: 86vh;

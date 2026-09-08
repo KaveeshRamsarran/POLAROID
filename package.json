@@ -19,7 +19,8 @@
     "test:cinema-systems": "node scripts/cinema-systems.mjs",
     "test:cinema-routes": "node scripts/cinema-routes.mjs",
     "test:anthology": "node scripts/anthology.mjs",
-    "test:cinema-photos": "node scripts/cinema-photos.mjs"
+    "test:cinema-photos": "node scripts/cinema-photos.mjs",
+    "test:cinema-presentation": "node scripts/cinema-presentation.mjs"
   },
   "dependencies": {
     "three": "0.180.0"

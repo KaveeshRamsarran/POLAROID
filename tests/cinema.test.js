@@ -12,6 +12,7 @@ import {
   SAVE_KEY,
   floorAt,
   navigation,
+  objective,
 } from "../src/cinema/logic.js";
 test("cinema saves are versioned and independent of Blackwood", () => {
   assert.notEqual(SAVE_KEY, "polaroid.save.v1");
@@ -84,21 +85,12 @@ test("photographic clues require reel, viewpoint, framing, distance and visibili
   ])
     assert.equal(canRegisterPhoto({ ...valid, ...change }), false);
 });
-test("story gates require actual checklist and independent photographic puzzles", () => {
+test("simplified story requires three survey tasks and two photo clues, without optional puzzles", () => {
   const s = newStory();
   assert.equal(openingComplete(s), false);
-  for (const k of [
-    "message",
-    "seats",
-    "equipment",
-    "exits",
-    "sorted",
-    "belongings",
-  ])
-    s.tasks[k] = true;
+  for (const k of ["message", "seats", "equipment"]) s.tasks[k] = true;
   assert.equal(openingComplete(s), true);
-  for (const k of ["opening", "return", "doorway", "ada", "frame"])
-    s.evidence[k] = "photo";
+  for (const k of ["doorway", "ada"]) s.evidence[k] = "photo";
   assert.equal(investigationComplete(s), false);
   s.items.splice = true;
   assert.equal(investigationComplete(s), true);
@@ -132,4 +124,58 @@ test("swept clearance rejects the narrow backstage corner a sampled ray misses",
     assert(nav.clear(previous, point, 0.22, true));
     previous = point;
   }
+});
+
+test("open door leaves still block their occupied space", () => {
+  const doors = { auditorium: false };
+  const nav = navigation(
+    [
+      {
+        x1: -1.3,
+        x2: 1.3,
+        z1: 3.95,
+        z2: 4.05,
+        y1: 0,
+        y2: 2.4,
+        door: "auditorium",
+      },
+      {
+        x1: -1.35,
+        x2: -1.25,
+        z1: 4,
+        z2: 5.3,
+        y1: 0,
+        y2: 2.4,
+        door: "auditorium",
+        openLeaf: true,
+      },
+    ],
+    doors,
+  );
+  assert(nav.blocked(0, 4));
+  assert.equal(nav.blocked(-1.3, 4.7), false);
+  doors.auditorium = true;
+  assert.equal(nav.blocked(0, 4), false);
+  assert(nav.blocked(-1.3, 4.7));
+});
+
+test("older chapter progress gains new doors and follows the simpler objective", () => {
+  const old = newStory();
+  old.doors = { booth: false, exit: false };
+  old.reels = ["opening", "return", "incident"];
+  old.activeReel = "incident";
+  old.events.jamRepaired = true;
+  old.items.reference = true;
+  old.evidence = {
+    opening: "old-print",
+    return: "another-print",
+    doorway: "door",
+    ada: "key",
+  };
+  const restored = restoreStory(old);
+  assert.equal(restored.doors.booth, false);
+  assert.equal(restored.doors.archive, true);
+  assert.deepEqual(restored.evidence, old.evidence);
+  assert.match(objective(restored), /drawer labelled A. BELL/);
+  assert.equal(floorAt(0, 21), 0);
 });

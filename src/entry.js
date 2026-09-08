@@ -19,10 +19,36 @@ else {
   document.querySelector("#loading").hidden = true;
   const screen = document.createElement("main");
   screen.className = "anthology";
-  screen.innerHTML = `<header><a class="brand" href="./">◉ STILL / HERE</a><span>AN ANTHOLOGY OF IMPOSSIBLE PHOTOGRAPHS</span></header><div class="anthology-title"><div class="eyebrow">CHOOSE A MEMORY</div><h1>POLAROID</h1><p>Different places. Familiar darkness.<br>Some things only exist in photographs.</p></div><section class="chapter-grid" aria-label="Choose a story">
-  <article class="chapter-card blackwood"><div class="chapter-art"><img src="/chapter-art/blackwood.jpg" alt="The deserted green hallway of Blackwood House"><span>01 / OCTOBER 1997</span></div><div class="chapter-copy"><div class="eyebrow">CHAPTER 01</div><h2>BLACKWOOD HOUSE</h2><p>Return to the house that remembers you. Four photographs. One way out.</p><small>${complete.blackwood ? "STORY COMPLETED" : blackwood ? `${Object.keys(blackwood.evidence || {}).length} / 4 MEMORIES RECOVERED` : "AN UNDEVELOPED MEMORY"}</small><div class="chapter-actions"><a class="filled-button" href="?chapter=blackwood&play=new">NEW STORY ↗</a>${blackwood ? '<a href="?chapter=blackwood&play=continue">CONTINUE →</a>' : '<button disabled class="muted" title="No saved story">CONTINUE</button>'}</div></div></article>
-  <article class="chapter-card cinema"><div class="chapter-art"><img src="/chapter-art/cinema.jpg" alt="Empty burgundy seats beneath a cinema projection beam"><span>02 / NOVEMBER 1998</span></div><div class="chapter-copy"><div class="eyebrow">CHAPTER 02</div><h2>THE LAST SHOWING</h2><p>Catalogue a cinema before its final closure. Someone is still waiting for the film to end.</p><small>${cinema?.completed ? "STORY COMPLETED" : cinema ? `${Object.keys(cinema.evidence || {}).length} PHOTOGRAPHIC DISCOVERIES` : "BELLWETHER CINEMA / ADMIT ONE"}</small><div class="chapter-actions"><a class="filled-button" href="?chapter=last-showing&play=new">NEW STORY ↗</a>${cinema && !cinema.completed ? '<a href="?chapter=last-showing&play=continue">CONTINUE →</a>' : '<button disabled class="muted" title="No unfinished story">CONTINUE</button>'}</div></div></article></section><footer><span>HEADPHONES RECOMMENDED</span><span>Your stories are saved separately. Settings follow you.</span><span><button id="anthology-settings">SETTINGS</button> / <button id="anthology-credits">CREDITS</button></span></footer>`;
+  screen.innerHTML = `<div class="menu-backgrounds" aria-hidden="true"><img data-background="blackwood" class="active" src="/chapter-art/blackwood.jpg" alt=""><img data-background="cinema" src="/chapter-art/cinema.jpg" alt=""></div><div class="menu-shade"></div><header><a class="brand" href="./">STILL / HERE</a><span>AN ANTHOLOGY OF IMPOSSIBLE PHOTOGRAPHS</span></header><section class="anthology-title"><div class="eyebrow">A PSYCHOLOGICAL HORROR EXPERIENCE</div><h1>POLAROID</h1><p>Some things only exist<br>in photographs.</p><div class="menu-rule"></div><span id="menu-location">BLACKWOOD HOUSE / OCTOBER 1997</span></section><section class="chapter-grid" aria-label="Choose a story"><div class="eyebrow">SELECT A STORY</div>
+<article class="chapter-card blackwood selected" data-chapter="blackwood"><button class="chapter-name" aria-pressed="true"><small>CHAPTER 01</small><h2>BLACKWOOD HOUSE</h2></button><p>Return to the house that remembers you.</p><small class="chapter-progress">${complete.blackwood ? "STORY COMPLETED" : blackwood ? "SAVED STORY / " + Object.keys(blackwood.evidence || {}).length + " OF 4 MEMORIES" : "YOUR STORY BEGINS HERE"}</small><div class="chapter-actions"><a href="?chapter=blackwood&play=new">NEW STORY &#8599;</a>${blackwood ? '<a href="?chapter=blackwood&play=continue">CONTINUE &#8594;</a>' : "<button disabled>CONTINUE</button>"}</div></article>
+<article class="chapter-card cinema" data-chapter="cinema"><button class="chapter-name" aria-pressed="false"><small>CHAPTER 02</small><h2>THE LAST SHOWING</h2></button><p>A closing shift. An empty cinema. One last patron.</p><small class="chapter-progress">${cinema?.completed ? "STORY COMPLETED" : cinema ? "SAVED STORY" : "BELLWETHER CINEMA / ADMIT ONE"}</small><div class="chapter-actions"><a href="?chapter=last-showing&play=new">NEW STORY &#8599;</a>${cinema && !cinema.completed ? '<a href="?chapter=last-showing&play=continue">CONTINUE &#8594;</a>' : "<button disabled>CONTINUE</button>"}</div></article></section><footer><span>HEADPHONES RECOMMENDED</span><span><button id="anthology-settings">SETTINGS</button> / <button id="anthology-credits">CREDITS</button></span></footer>`;
   document.body.append(screen);
+  function selectChapter(id) {
+    screen
+      .querySelectorAll("[data-background]")
+      .forEach((image) =>
+        image.classList.toggle("active", image.dataset.background === id),
+      );
+    screen.querySelectorAll("[data-chapter]").forEach((row) => {
+      const selected = row.dataset.chapter === id;
+      row.classList.toggle("selected", selected);
+      row
+        .querySelector(".chapter-name")
+        .setAttribute("aria-pressed", String(selected));
+    });
+    document.querySelector("#menu-location").textContent =
+      id === "cinema"
+        ? "BELLWETHER CINEMA / NOVEMBER 1998"
+        : "BLACKWOOD HOUSE / OCTOBER 1997";
+  }
+  screen.querySelectorAll("[data-chapter]").forEach((row) => {
+    row.addEventListener("pointerenter", () =>
+      selectChapter(row.dataset.chapter),
+    );
+    row.addEventListener("focusin", () => selectChapter(row.dataset.chapter));
+    row.querySelector(".chapter-name").onclick = () =>
+      selectChapter(row.dataset.chapter);
+  });
   function anthologyPanel(title, body) {
     const overlay = document.querySelector("#overlay");
     overlay.hidden = false;

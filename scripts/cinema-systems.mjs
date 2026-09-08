@@ -69,7 +69,7 @@ try {
   );
   s = newStory();
   s.film = 0;
-  s.checkpoint = { x: -7, z: 9, yaw: Math.PI, pitch: -0.2 };
+  s.checkpoint = { x: -7, z: 19, yaw: Math.PI, pitch: -0.2 };
   await fixture(s);
   await page.keyboard.press("e");
   assert.equal((await diagnostics()).state.film, 8);
@@ -88,6 +88,8 @@ try {
   s.events = { firstJam: true, jamRepaired: true };
   s.evidence = { first: "fixture", ada: "fixture", doorway: "fixture" };
   s.patron = { x: 0, z: 1, awakened: true, distance: 5 };
+  s.projector.status = "power";
+  s.events.powerFault = true;
   s.checkpoint = {
     x: -12,
     z: -22.3,

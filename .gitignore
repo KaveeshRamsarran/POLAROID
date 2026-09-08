@@ -16,3 +16,10 @@ artifacts/*
 !artifacts/anthology.png
 !artifacts/cinema-first-print.png
 !artifacts/cinema-ending.png
+
+!artifacts/anthology-cinema.png
+!artifacts/cinema-lobby.png
+!artifacts/cinema-concessions.png
+!artifacts/cinema-doors.png
+!artifacts/cinema-auditorium.png
+!artifacts/cinema-archive.png

@@ -13,6 +13,9 @@ await page.goto(
 await page.click("#enter-story");
 const routes = await page.evaluate(() => {
   const places = {
+    ticketCounter: { x: -5.5, z: 19 },
+    concessions: { x: 6.7, z: 16.9 },
+    lounge: { x: -5.7, z: 16.5 },
     booth: { x: 12, z: -2 },
     archive: { x: -18, z: -2 },
     backstage: { x: -7, z: -22 },
@@ -22,7 +25,7 @@ const routes = await page.evaluate(() => {
   };
   return Object.fromEntries(
     Object.entries(places).map(([id, to]) => {
-      const path = window.cinemaNavigation.path({ x: 0, z: 11 }, to);
+      const path = window.cinemaNavigation.path({ x: 0, z: 18 }, to);
       return [
         id,
         {

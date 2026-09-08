@@ -14,6 +14,19 @@ try {
   await page.goto(base);
   await page.locator(".chapter-grid").waitFor();
   assert.equal(await page.locator(".chapter-card").count(), 2);
+  await page.locator(".chapter-card.cinema").hover();
+  assert.equal(
+    await page.locator('[data-background="cinema"]').getAttribute("class"),
+    "active",
+  );
+  await page.waitForTimeout(850);
+  await page.screenshot({ path: "artifacts/anthology-cinema.png" });
+  await page.locator(".chapter-card.blackwood .chapter-name").focus();
+  assert.equal(
+    await page.locator('[data-background="blackwood"]').getAttribute("class"),
+    "active",
+  );
+  await page.waitForTimeout(850);
   await page.screenshot({ path: "artifacts/anthology.png" });
   await page.click("#anthology-settings");
   await page.locator('[data-setting="effects"]').fill("0.45");

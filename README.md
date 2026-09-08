@@ -15,7 +15,7 @@ npm install
 npm run dev
 ```
 
-Open **http://127.0.0.1:3000**. Choose **New Story** or **Continue**, then enter the selected chapter to enable sound and mouse capture. When browser mouse capture is unavailable, drag to look or use the arrow keys. All game assets are local; gameplay makes no network requests.
+Open **http://127.0.0.1:3000**. Hover or focus a chapter on the right to preview its full-screen photograph. Choose **New Story** or **Continue**, then enter the selected chapter to enable sound and mouse capture. When browser mouse capture is unavailable, drag to look or use the arrow keys. All game assets are local; gameplay makes no network requests.
 
 ```sh
 npm run build
@@ -44,7 +44,7 @@ The production build is in `dist/`. Serve that directory over HTTP; opening `ind
 
 ## The Last Showing
 
-Bellwether Cinema is closing permanently. Complete a mundane survey, compare photographic memories across three reels, uncover Ada Bell's erased evacuation attempt, assemble the missing section, and open the service exit during the final screening. The patron advances when projection stops and stays where it is when the motor restarts. The cinema includes a lobby, concessions, auditorium, upstairs booth, archive, backstage and service route.
+Bellwether Cinema is closing permanently. Complete three survey tasks, uncover Ada Bell's evacuation attempt with two photographs under one investigation reel, find the missing film, and open the service exit during the final screening. Clear objectives guide one step at a time; no drawer code or repeated audience comparisons are required. The patron advances when projection stops and stays where it is when the motor restarts. The expanded foyer separates ticketing, concessions and a furnished waiting lounge. Labelled hinged doors connect the auditorium, upstairs booth, archive, backstage and service route.
 
 The chapter includes a recorded manager message, positional projector and mechanical sounds, real developing photographs, distinct photographic puzzles, a final departure and a completed-story marker. The pause menu returns to story selection. Blackwood's existing save key and latest gameplay remain intact; cinema progress and photographs use a separate versioned save. Settings are shared.
 

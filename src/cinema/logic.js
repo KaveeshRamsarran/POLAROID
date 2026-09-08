@@ -1,9 +1,9 @@
 export const SAVE_KEY = "polaroid.last-showing.v1";
 export const REELS = {
-  opening: { name: "1959 / OPENING NIGHT", seconds: 300 },
-  return: { name: "1979 / REOPENING", seconds: 300 },
-  incident: { name: "1978 / INCOMPLETE", seconds: 300 },
-  complete: { name: "1978 / THE LAST SHOWING", seconds: 150 },
+  opening: { name: "1959 / OPENING NIGHT", seconds: 420 },
+  return: { name: "1979 / REOPENING", seconds: 420 },
+  incident: { name: "1978 / INCIDENT REEL", seconds: 420 },
+  complete: { name: "1978 / THE LAST SHOWING", seconds: 180 },
 };
 export const EVIDENCE = {
   seats: "Catalogue / torn upholstery",
@@ -22,7 +22,7 @@ export const EVIDENCE = {
 export function newStory() {
   return {
     version: 1,
-    checkpoint: { x: 0, z: 11, yaw: 0, pitch: 0 },
+    checkpoint: { x: 0, z: 18, yaw: 0, pitch: 0 },
     film: 12,
     photos: [],
     evidence: {},
@@ -31,9 +31,16 @@ export function newStory() {
     events: {},
     reels: ["opening"],
     activeReel: "opening",
-    projector: { status: "running", remaining: 300 },
+    projector: { status: "running", remaining: 420 },
     patron: { x: 6.5, z: -2, awakened: false, distance: 0 },
-    doors: { booth: true, exit: false },
+    doors: {
+      booth: true,
+      auditorium: true,
+      archive: true,
+      backstage: true,
+      service: true,
+      exit: false,
+    },
     elapsed: 0,
     completed: false,
   };
@@ -81,21 +88,10 @@ export function restoreStory(raw) {
   return s;
 }
 export function openingComplete(s) {
-  return [
-    "message",
-    "seats",
-    "equipment",
-    "exits",
-    "sorted",
-    "belongings",
-  ].every((k) => s.tasks[k]);
+  return ["message", "seats", "equipment"].every((k) => s.tasks[k]);
 }
 export function investigationComplete(s) {
-  return (
-    ["opening", "return", "doorway", "ada", "frame"].every(
-      (k) => s.evidence[k],
-    ) && !!s.items.splice
-  );
+  return !!(s.evidence.doorway && s.evidence.ada && s.items.splice);
 }
 export function changeReel(s, id) {
   if (
@@ -154,35 +150,49 @@ export function canRegisterPhoto({
 }
 export function objective(s) {
   if (s.events.released)
-    return "Photograph the open service exit. Then step outside.";
-  if (s.activeReel === "complete" && s.projector.status === "running")
-    return s.evidence.evacuation
-      ? "The complete screening is running. Open the service exit before the reel ends."
-      : "Photograph the complete evacuation memory in the backstage service passage, then open the exit.";
-  if (investigationComplete(s))
-    return "Assemble the missing section at the projection bench.";
-  if (s.evidence.ada && s.evidence.doorway && s.evidence.frame)
-    return "Find the archive drawer: seat number first, splice number second.";
-  if (s.evidence.opening && s.evidence.return)
-    return "Compare the 1978 memories: the service wall, Ada’s hand, and the repeating splice frame.";
-  if (s.events.jamRepaired)
-    return "Photograph the patron under both Opening Night and Reopening. Change reels in the booth.";
+    return s.evidence.final
+      ? "Walk through the open service exit."
+      : "Wait for the patron to step outside. Photograph the open exit (C).";
+  if (s.events.climax)
+    return s.projector.status === "running"
+      ? "Go downstairs to the service passage. Open the exit (E) before the film ends."
+      : "Restart the complete reel at the projector upstairs.";
   if (s.projector.status === "jammed")
-    return "Return to the booth. Lift the film loop, then restart the motor. It moves in the silence.";
+    return "Go to the projector upstairs. Press E, then REPAIR & RESTART.";
+  if (s.projector.status === "power")
+    return "Reset the breaker at the end of the service passage, then restart the projector.";
+  if (investigationComplete(s))
+    return "Return to the upstairs booth. Assemble the film at the workbench (E).";
+  if (s.events.jamRepaired) {
+    if (!s.reels.includes("incident") || !s.items.reference)
+      return "Collect the 1978 reel from the archive table. Follow STAFF ONLY, then FILM ARCHIVE.";
+    if (s.activeReel !== "incident")
+      return "Return to the upstairs projector. Select PLAY: INCIDENT REEL.";
+    if (s.projector.status !== "running")
+      return "Restart or rewind the projector upstairs. The patron moves when it is silent.";
+    if (!s.evidence.doorway)
+      return "In the service passage, photograph the painted-over exit beside the red EXIT sign (C).";
+    if (!s.evidence.ada)
+      return "Go through the BACKSTAGE door beside the screen. Photograph Ada from the side to see her key (C).";
+    return "Take the missing film from the drawer labelled A. BELL at the back of the archive (E).";
+  }
   if (s.items.coat)
-    return "Check the projector in the booth. The film is starting to slap.";
-  if (s.evidence.first) return "Look beneath the folded coat at F8.";
-  if (s.items.ticket)
-    return "Photograph row F, seat 8 while the opening reel runs.";
+    return "Check the projector upstairs. The film sounds loose.";
+  if (s.evidence.first) return "Go to row F, seat 8. Check the coat (E).";
+  if (s.items.ticket) return "Enter SCREEN ONE. Photograph row F, seat 8 (C).";
   if (openingComplete(s))
-    return "The ticket printer is running. Return to the lobby counter.";
-  return "Finish the closing checklist. The journal keeps your tasks and photographs.";
+    return "Collect the new ticket from the printer at the lobby counter (E).";
+  if (!s.tasks.message)
+    return "Listen to the recorder at the lobby ticket counter (E).";
+  if (!s.tasks.seats)
+    return "Enter SCREEN ONE. Find row D, seat 3 and photograph its torn cushion (C).";
+  return "Follow PROJECTION UPSTAIRS. Photograph the projector (C).";
 }
 
 // The plan is also the navigation surface. No overlapping floors or abstract
 // shortcuts: the booth is reached by this staircase in both player and AI paths.
 export const REGIONS = [
-  { name: "Lobby", x1: -10, x2: 10, z1: 4, z2: 14, y: 0 },
+  { name: "Lobby", x1: -10, x2: 10, z1: 4, z2: 22, y: 0 },
   { name: "Auditorium", x1: -10, x2: 10, z1: -20, z2: 4, y: 0 },
   { name: "Service passage", x1: -14, x2: -10, z1: -24, z2: 14, y: 0 },
   { name: "Backstage", x1: -10, x2: 10, z1: -24, z2: -20, y: 0 },
@@ -200,6 +210,11 @@ export function floorAt(x, z) {
   return r ? (r.ramp ? 3.6 * (1 - z / 12) : r.y) : null;
 }
 export function navigation(solids, doors) {
+  function inactive(box, planning) {
+    if (!box.door) return false;
+    if (box.openLeaf) return !doors[box.door];
+    return !!doors[box.door] || (planning && box.door !== "exit");
+  }
   function blocked(x, z, r = 0.23, planning = false) {
     const y = floorAt(x, z);
     if (y === null) return true;
@@ -212,7 +227,7 @@ export function navigation(solids, doors) {
       if (floorAt(x + dx, z + dz) === null) return true;
     return solids.some(
       (b) =>
-        !(b.door && (doors[b.door] || (planning && b.door === "booth"))) &&
+        !inactive(b, planning) &&
         y + 1.5 > b.y1 &&
         y + 0.1 < b.y2 &&
         x > b.x1 - r &&
@@ -237,8 +252,7 @@ export function navigation(solids, doors) {
     // Sampled walks alone miss a thin diagonal intersection at a wall corner.
     // Sweep the navigation radius against every wall's expanded rectangle.
     for (const box of solids) {
-      if (box.door && (doors[box.door] || (planning && box.door === "booth")))
-        continue;
+      if (inactive(box, planning)) continue;
       let enter = 0,
         leave = 1,
         hit = true;

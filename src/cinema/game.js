@@ -96,7 +96,7 @@ function applySettings() {
   renderer.toneMappingExposure = settings.brightness;
   camera.fov = settings.fov;
   camera.updateProjectionMatrix();
-  $("#grain").style.opacity = settings.quality === "low" ? "0" : ".12";
+  $("#grain").style.opacity = settings.quality === "low" ? "0" : ".015";
 }
 applySettings();
 {
@@ -264,12 +264,9 @@ function journal() {
     message: "Listen to the manager’s recording / lobby counter",
     seats: "Photograph torn seat D3 / auditorium",
     equipment: "Photograph the projector / upstairs booth",
-    exits: "Inspect emergency exit / west service passage",
-    sorted: "Sort film cans / archive",
-    belongings: "Bag forgotten belongings / concession counter",
   };
   panel(
-    "THE CLOSING BOOK",
+    "CHECKLIST & PHOTOS",
     `<p class="cinema-note">${objective(state)}</p><div class="cinema-note">${Object.entries(
       tasks,
     )
@@ -278,7 +275,7 @@ function journal() {
       )
       .join(
         "",
-      )}</div>${state.items.ticket ? '<p class="cinema-note">SCREEN ONE · ROW F · SEAT 8 · ADMIT ONE</p>' : ""}${state.items.records ? '<p class="cinema-note">Maintenance: the service leaf binds against stored cabinets. The manager declined clearance before the 1978 screening. Archive filing: SEAT number first, SPLICE reference second; two digits each. Incident report: “Projectionist absent.” The next page has been removed.</p>' : ""}${state.items.reference ? `<img style="width:180px;border:10px solid #d8d0b5" src="${state.items.referenceImage || ""}" alt="1978 survey photograph"><p class="cinema-note">Survey print: stand on the brass square in the service passage, facing the sealed wall. The 1978 reel remembers an opening beneath the paint.</p>` : ""}<div class="cinema-journal">${state.photos.map((p) => `<figure><img src="${p.image}" alt="${p.caption}"><figcaption>${p.caption}<br>${REELS[p.reel]?.name || ""}</figcaption>${p.evidence.length ? "" : `<button data-delete="${p.id}">DISCARD PRINT</button>`}</figure>`).join("")}</div>`,
+      )}</div>${state.items.ticket ? '<p class="cinema-note">SCREEN ONE · ROW F · SEAT 8 · ADMIT ONE</p>' : ""}${state.items.records ? '<p class="cinema-note">Maintenance: the service leaf binds against stored cabinets. The manager declined clearance before the 1978 screening. Separately stored film: drawer A. BELL. Incident report: “Projectionist absent.” The next page has been removed.</p>' : ""}${state.items.reference ? `<img style="width:180px;border:10px solid #d8d0b5" src="${state.items.referenceImage || ""}" alt="1978 survey photograph"><p class="cinema-note">Survey print: stand on the brass square in the service passage, facing the sealed wall. The 1978 reel remembers an opening beneath the paint.</p>` : ""}<div class="cinema-journal">${state.photos.map((p) => `<figure><img src="${p.image}" alt="${p.caption}"><figcaption>${p.caption}<br>${REELS[p.reel]?.name || ""}</figcaption>${p.evidence.length ? "" : `<button data-delete="${p.id}">DISCARD PRINT</button>`}</figure>`).join("")}</div>`,
     [],
     true,
   );
@@ -303,7 +300,7 @@ function projectorPanel() {
   };
   panel(
     "THE PROJECTOR",
-    `<p class="cinema-note">${names[state.projector.status]}<br>${REELS[state.activeReel].name}</p><p class="cinema-timer" id="live-timer"></p><p>Changing or rewinding a reel stops projection. The motor holds the patron where it stands. This panel does not pause the story.</p><div class="cinema-reel">${state.reels.map((id) => `<button data-reel="${id}" ${id === state.activeReel ? 'class="selected"' : ""}>${REELS[id].name}</button>`).join(" ")}</div>`,
+    `<p class="cinema-note">${names[state.projector.status]}<br>${REELS[state.activeReel].name}</p><p class="cinema-timer" id="live-timer"></p><p>Projector running: the patron stays still. Projector silent: it can move. Reel changes take three seconds and restart automatically. Stay nearby.</p><div class="cinema-reel">${state.reels.map((id) => `<button data-reel="${id}" ${id === state.activeReel ? 'class="selected"' : ""}>PLAY: ${id === "incident" ? "INCIDENT REEL" : REELS[id].name}</button>`).join(" ")}</div>`,
     [
       {
         id: "motor",
@@ -329,7 +326,7 @@ function projectorPanel() {
       },
       {
         id: "rewind",
-        label: "REWIND / 5 SECONDS",
+        label: "REWIND & RESTART / 5 SECONDS",
         disabled: ["jammed", "power"].includes(state.projector.status),
         action: () => {
           state.projector.status = "stopped";
@@ -344,7 +341,7 @@ function projectorPanel() {
       },
       {
         id: "unjam",
-        label: "LIFT FILM LOOP / 4 SECONDS",
+        label: "REPAIR & RESTART / 4 SECONDS",
         disabled: state.projector.status !== "jammed",
         action: () => {
           repair = { kind: "jam", remaining: 4 };
@@ -352,15 +349,20 @@ function projectorPanel() {
           subtitle("Lift the loop clear of the sprocket. Hold here.", 5, true);
         },
       },
-    ],
+    ].filter((control) => !control.disabled),
   );
   document.querySelectorAll("[data-reel]").forEach(
     (button) =>
       (button.onclick = () => {
         if (changeReel(state, button.dataset.reel)) {
           audio.mechanism({ x: 13.3, y: 4.9, z: -4.5 });
-          save();
-          projectorPanel();
+          repair = { kind: "load", remaining: 3 };
+          closePanel();
+          subtitle(
+            "Loading film. Stay here for three seconds; the motor will restart.",
+            5,
+            true,
+          );
         } else
           subtitle(
             "Restore power or clear the loop before changing reels.",
@@ -371,6 +373,14 @@ function projectorPanel() {
   );
 }
 function interact(id) {
+  if (id.startsWith("door:")) {
+    const key = id.slice(5),
+      door = world.doors.find((d) => d.id === key);
+    state.doors[key] = !state.doors[key];
+    audio.mechanism({ x: door.x, y: door.y + 1, z: door.z }, "door");
+    save();
+    return;
+  }
   if (id === "projector") {
     projectorPanel();
     return;
@@ -380,7 +390,7 @@ function interact(id) {
     audio.manager();
     panel(
       "MANAGER / 11:08 PM",
-      '<p class="cinema-note">“Thanks for covering tonight. Camera and spare film are on the counter. Photograph the torn seat in row D, and the projector upstairs. Check the service exit, sort the archive reels, and bag the lost property at concessions. The opening reel is already threaded. Keep it running while you work. Bring me the checklist in the morning. Lock up before midnight. And please, leave the old incident paperwork where it is.”</p>',
+      '<p class="cinema-note">Thanks for covering tonight. First, photograph the torn cushion in row D, seat 3. Then photograph the projector upstairs. That is all I need for the survey. The camera and spare film are here on the counter. Keep the projector running while you work. Lock up before midnight.</p>',
     );
     save();
   }
@@ -405,11 +415,13 @@ function interact(id) {
   }
   if (id === "sorted") {
     state.tasks.sorted = true;
-    for (const r of ["return", "incident"])
-      if (!state.reels.includes(r)) state.reels.push(r);
+    if (!state.reels.includes("incident")) state.reels.push("incident");
+    state.items.records = true;
+    state.items.reference = true;
+    if (!state.items.referenceImage) state.items.referenceImage = surveyPrint();
     panel(
-      "ARCHIVE / INVENTORY",
-      '<p class="cinema-note">1959 — OPENING NIGHT<br>1979 — REOPENING<br>1978 — INCIDENT / INCOMPLETE</p><p>Each can is labelled with a screening date. The old footage is ordinary film; the camera seems to see what the building remembers around it.</p>',
+      "THE 1978 REEL",
+      '<p class="cinema-note">A labelled reel, an old survey photograph, and a maintenance note.</p><p>The exit was blocked on the night of the incident. Ada Bell was blamed for leaving her post. This reel may reveal what happened.</p><p><strong>Next: take this reel upstairs and select PLAY: INCIDENT REEL.</strong> Then photograph the painted-over service exit and Ada backstage. The survey print is in your journal.</p>',
     );
     save();
   }
@@ -417,7 +429,7 @@ function interact(id) {
     state.items.records = true;
     panel(
       "TWO ACCOUNTS",
-      '<p class="cinema-note">MAINTENANCE / 14 NOVEMBER 1978<br>Service leaf binds against stored cabinets. Clearance requested. Manager declined: “After the late show.”</p><p class="cinema-note">INCIDENT / 15 NOVEMBER 1978<br>“Projectionist Ada Bell absent from post. Evacuation delayed.”<br>The signature page and witness account are missing.</p><p class="cinema-note">ARCHIVE FILING<br>Seat number first. Splice reference second. Two digits each.<br>Separately stored material must not be returned to its labelled reel.</p>',
+      '<p class="cinema-note">MAINTENANCE / 14 NOVEMBER 1978<br>Service leaf binds against stored cabinets. Clearance requested. Manager declined: “After the late show.”</p><p class="cinema-note">INCIDENT / 15 NOVEMBER 1978<br>“Projectionist Ada Bell absent from post. Evacuation delayed.”<br>The signature page and witness account are missing.</p><p class="cinema-note">FILM STORAGE<br>The removed section is in the drawer marked A. BELL. Photograph the service exit and Ada before taking it.</p>',
     );
     save();
   }
@@ -426,7 +438,7 @@ function interact(id) {
     if (!state.items.referenceImage) state.items.referenceImage = surveyPrint();
     panel(
       "THE SURVEY PRINT",
-      `<img style="width:230px;float:left;margin:0 24px 18px 0;border:12px solid #d8d0b5" src="${state.items.referenceImage}" alt="The old survey viewpoint and service door"><p class="cinema-note">A dated survey print shows a brass square beside the service wall. A doorway is visible between the electrical trunking and a hairline crack. The same brass square remains under your feet.</p><p>Stand on the square, face the sealed wall, and photograph it under the 1978 reel. The print is kept in your closing book.</p>`,
+      `<img style="width:230px;float:left;margin:0 24px 18px 0;border:12px solid #d8d0b5" src="${state.items.referenceImage}" alt="The old survey viewpoint and service door"><p class="cinema-note">A dated survey print shows a brass square beside the service wall. A doorway is visible between the electrical trunking and a hairline crack. The same brass square remains under your feet.</p><p>Stand on the square, face the sealed wall, and photograph it under the 1978 reel. The print is kept in your journal.</p>`,
     );
     save();
   }
@@ -457,34 +469,17 @@ function interact(id) {
     save();
   }
   if (id === "drawer") {
-    panel(
-      "SEAT / SPLICE",
-      '<p>Four digits. The maintenance record explains the filing order.</p><input id="drawer-code" inputmode="numeric" maxlength="4" aria-label="Four digit archive code" placeholder="— — — —"><p id="drawer-feedback" role="status"></p>',
-      [
-        {
-          id: "drawer-open",
-          label: "RELEASE DRAWER",
-          action: () => {
-            if (
-              $("#drawer-code").value === "0817" &&
-              state.evidence.frame &&
-              state.evidence.opening &&
-              state.evidence.return &&
-              state.items.records
-            ) {
-              state.items.splice = true;
-              audio.mechanism({ x: -18, y: 0.8, z: -9 });
-              closePanel();
-              milestone(
-                "The missing section. “SERVICE ROUTE — A. BELL.” The leader has been cut by hand.",
-              );
-            } else
-              $("#drawer-feedback").textContent =
-                "The drawer holds. Compare the recurring patron’s seat with the splice frame; check the filing note.";
-          },
-        },
-      ],
-    );
+    if (state.evidence.doorway && state.evidence.ada) {
+      state.items.splice = true;
+      audio.mechanism({ x: -18, y: 0.8, z: -9 });
+      milestone(
+        "You found the missing film. Take it to the workbench in the upstairs booth.",
+      );
+    } else
+      panel(
+        "A. BELL / REMOVED FILM",
+        "<p>The label reads SERVICE ROUTE. First photograph the painted-over exit and Ada backstage with the 1978 reel running. Those two photographs will explain where this film belongs.</p>",
+      );
   }
   if (id === "assemble") {
     if (investigationComplete(state)) {
@@ -495,7 +490,7 @@ function interact(id) {
       save();
       panel(
         "THE COMPLETE REEL",
-        '<p class="cinema-note">The missing section fits. Ada was opening a service route while someone held the auditorium doors shut.</p><p>The full reel runs for two minutes and thirty seconds. Start the motor, photograph the evacuation memory in the backstage service passage, and release the real service exit. If the reel ends, you can return and rewind it.</p>',
+        '<p class="cinema-note">The missing section fits. Ada was opening a service route while someone held the auditorium doors shut.</p><p>You have three minutes. Start the film, go downstairs through STAFF ONLY, and open the service exit. If the reel ends, return to the projector and rewind it.</p>',
         [
           {
             id: "final-start",
@@ -510,7 +505,7 @@ function interact(id) {
       );
     } else
       subtitle(
-        "The splice needs its missing section and an account the photographs can support. Check the closing book.",
+        "Find the missing film in the archive first. Your journal shows the next step.",
         8,
         true,
       );
@@ -526,8 +521,7 @@ function interact(id) {
     if (
       state.activeReel === "complete" &&
       state.projector.status === "running" &&
-      state.evidence.doorway &&
-      state.evidence.evacuation
+      state.evidence.doorway
     ) {
       state.doors.exit = true;
       state.events.released = true;
@@ -536,13 +530,7 @@ function interact(id) {
       milestone(
         "The door gives. For the first time, the route is clear. Photograph the open exit.",
       );
-    } else if (state.activeReel === "complete" && !state.evidence.evacuation)
-      subtitle(
-        "A memory gathers behind the service passage. Photograph the people Ada was guiding out.",
-        8,
-        true,
-      );
-    else if (state.evidence.doorway)
+    } else if (state.evidence.doorway)
       subtitle(
         "The latch is caught in the unfinished memory. Complete the screening first.",
         7,
@@ -710,7 +698,7 @@ function capture() {
   if (state.projector.status === "running" && state.events.jamRepaired) {
     if (state.items.reference && eligible("doorway")) ids.push("doorway");
     if (eligible("figure")) ids.push("figure");
-    if (state.evidence.figure && eligible("ada")) ids.push("ada");
+    if (eligible("ada")) ids.push("ada");
     if (
       state.activeReel === "incident" &&
       state.elapsed % 14 > 10 &&
@@ -762,7 +750,7 @@ function capture() {
   $("#photo-note").textContent = "THE STORY CONTINUES WHILE YOU LOOK";
   if (fresh.includes("first"))
     subtitle("Something is forming in the print. Row F. Seat 8.", 7, true);
-  else if (fresh.includes("figure"))
+  else if (fresh.includes("figure") && !fresh.includes("ada"))
     subtitle(
       "Ada is beside the service passage. From here, the object in her hand could be a film can. Look from the side.",
       9,
@@ -778,15 +766,15 @@ function capture() {
     subtitle("A door under the paint. The handle is real.", 7, true);
   else if (fresh.includes("frame"))
     subtitle(
-      "Splice reference 17. The photograph has kept the passing frame.",
+      "An old splice mark. This is an extra photograph; your checklist shows what you need next.",
       7,
       true,
     );
   else if (fresh.length)
-    subtitle("A new detail has been kept in the closing book.", 5, true);
+    subtitle("A new detail has been kept in the journal.", 5, true);
   else
     subtitle(
-      "The print is kept. Try a clearer view, a different reel, or another position.",
+      "Photo saved. Check the objective for what to photograph next.",
       5,
     );
   if (
@@ -915,13 +903,17 @@ function threat(dt) {
       route.shift();
       continue;
     }
-    if (
-      Math.hypot(state.patron.x - 12, state.patron.z) < 1.4 &&
-      !state.doors.booth
-    ) {
-      state.doors.booth = true;
-      audio.mechanism({ x: 12, y: 4.7, z: 0 }, "door");
-      subtitle("The door below the booth opens.", 5);
+    for (const door of world.doors) {
+      if (
+        door.id !== "exit" &&
+        !state.doors[door.id] &&
+        Math.hypot(state.patron.x - door.x, state.patron.z - door.z) < 1.4
+      ) {
+        state.doors[door.id] = true;
+        syncDoors();
+        audio.mechanism({ x: door.x, y: door.y + 1, z: door.z }, "door");
+        subtitle("A door opens in the silence.", 5);
+      }
     }
     const move = Math.min(remaining, d),
       nx = state.patron.x + (dx / d) * move,
@@ -999,13 +991,13 @@ function storyEvents(dt) {
     state.patron.z = -1.08;
   }
   if (
-    state.evidence.opening &&
-    state.evidence.return &&
+    state.evidence.doorway &&
+    state.evidence.ada &&
     !state.events.audienceTurn
   ) {
     state.events.audienceTurn = true;
     milestone(
-      "Different screenings. Different audiences. The same unclaimed patron. Try the 1978 reel.",
+      "The audience turns toward you. Ada was helping them leave. The removed film is in the archive drawer marked A. BELL.",
     );
   }
   if (
@@ -1019,21 +1011,6 @@ function storyEvents(dt) {
     audio.mechanism({ x: 12, y: 4.8, z: 0 }, "door");
     milestone("Upstairs, the booth door closes. It is not locked.");
   }
-  if (
-    !state.events.climax &&
-    state.evidence.ada &&
-    state.evidence.doorway &&
-    !state.events.powerFault &&
-    Math.hypot(player.x + 12, player.z + 22) < 3
-  ) {
-    state.events.powerFault = true;
-    state.projector.status = "power";
-    audio.mechanism({ x: -10.2, y: 1.5, z: -22.8 });
-    milestone(
-      "The service breaker trips beside you. Reset it, then restart the motor upstairs.",
-    );
-    grace = 8;
-  }
   if (repair) {
     if (Math.hypot(player.x - 13.3, player.z + 3.6) > 3) {
       repair = null;
@@ -1046,15 +1023,16 @@ function storyEvents(dt) {
       repair.remaining -= dt;
       if (repair.remaining <= 0) {
         if (repair.kind === "jam") {
-          state.projector.status = "stopped";
+          state.projector.status = "running";
           state.events.jamRepaired = true;
-          state.projector.remaining = Math.max(state.projector.remaining, 180);
+          state.projector.remaining = Math.max(state.projector.remaining, 300);
           milestone(
-            "The loop runs freely. Restart the motor. Photograph the aisle, then compare the reels.",
+            "The motor restarts. It moved while the film was stopped. Collect the 1978 reel from the archive.",
           );
         } else {
           state.projector.remaining = REELS[state.activeReel].seconds;
-          milestone("Rewound. The motor is ready to start.");
+          state.projector.status = "running";
+          milestone("The projector is running. The patron has stopped.");
         }
         repair = null;
       }
@@ -1164,7 +1142,27 @@ function hud() {
     $("#live-timer").textContent =
       `${Math.ceil(state.projector.remaining)} seconds · ${state.projector.status.toUpperCase()}${repair ? " · WORK IN PROGRESS" : ""}`;
   const target = mode === "playing" && !physical ? interactTarget() : null;
-  $("#interaction").textContent = target ? `[ E ] ${target.label}` : "";
+  let photoHint = "";
+  if (mode === "playing" && !physical) {
+    const next = !state.tasks.seats
+      ? ["seats", "Photograph the torn cushion"]
+      : !state.tasks.equipment
+        ? ["equipment", "Photograph the projector"]
+        : state.items.ticket && !state.evidence.first
+          ? ["patron", "Photograph seat F8"]
+          : state.activeReel === "incident" &&
+              state.projector.status === "running" &&
+              state.events.jamRepaired
+            ? !state.evidence.doorway
+              ? ["doorway", "Photograph the painted-over exit"]
+              : !state.evidence.ada
+                ? ["ada", "Photograph the service key in Ada's hand"]
+                : null
+            : null;
+    if (next && eligible(next[0])) photoHint = "[ C ] " + next[1];
+  }
+  $("#interaction").textContent =
+    photoHint || (target ? "[ E ] " + target.label : "");
   if (state.elapsed > subtitleUntil) $("#subtitle").textContent = "";
   if (held) {
     $("#develop-layer").style.opacity = String(Math.max(0, develop / 2.7));
