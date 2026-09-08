@@ -553,10 +553,18 @@ function interactTarget() {
         return false;
       const v = t.position.clone().sub(camera.position),
         d = v.length();
+      const door =
+        t.id === "boothDoor"
+          ? "booth"
+          : t.id.startsWith("door:")
+            ? t.id.slice(5)
+            : t.id === "exit"
+              ? "exit"
+              : null;
       return (
         d < t.range &&
         v.normalize().dot(direction) > 0.35 &&
-        visible(t.position, 0.12)
+        visible(t.position, 0.12, door)
       );
     })
     .sort(
@@ -566,13 +574,19 @@ function interactTarget() {
     )[0];
 }
 const ray = new THREE.Raycaster();
-function visible(position, tolerance = 0.2) {
+function visible(position, tolerance = 0.2, interactionDoor = null) {
   const v = position.clone().sub(camera.position),
     d = v.length();
   ray.set(camera.position, v.normalize());
   ray.far = Math.max(0, d - tolerance);
   return !ray.intersectObjects(
-    world.occluders.filter((o) => o.visible),
+    // A door's handle/leaf must not hide its own interaction point. Other
+    // doors and walls still occlude it; photographic checks skip nothing.
+    world.occluders.filter(
+      (o) =>
+        o.visible &&
+        (!interactionDoor || o.userData.interactionDoor !== interactionDoor),
+    ),
     false,
   ).length;
 }

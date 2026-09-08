@@ -23,3 +23,4 @@ artifacts/*
 !artifacts/cinema-doors.png
 !artifacts/cinema-auditorium.png
 !artifacts/cinema-archive.png
+!artifacts/cinema-mounted-lights.png

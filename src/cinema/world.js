@@ -3,7 +3,7 @@ import { createSurface, repeatMaterial, surfaceKinds } from "../materials.js";
 import { modelTools } from "../shared/model-tools.js";
 import { makeCamera } from "../shared/camera-model.js";
 import { updateObserverAnimation } from "../observer-animation.js";
-import { REGIONS, floorAt, navigation } from "./logic.js";
+import { REGIONS, floorAt, regionAt, navigation } from "./logic.js";
 
 export function buildCinema(scene, state) {
   const mats = {};
@@ -108,7 +108,15 @@ export function buildCinema(scene, state) {
   function lintelZ(z, x1, x2, base = 2.5, top = 6.2) {
     wallZ(z, x1, x2, top - base, base);
   }
-  function light(x, y, z, color = "#ffe2aa", power = 12, distance = 11) {
+  function light(
+    x,
+    y,
+    z,
+    color = "#ffe2aa",
+    power = 12,
+    distance = 11,
+    mounted = false,
+  ) {
     const l = new THREE.PointLight(color, power, distance, 1.8);
     l.position.set(x, y, z);
     scene.add(l);
@@ -122,6 +130,28 @@ export function buildCinema(scene, state) {
       z,
       new THREE.MeshBasicMaterial({ color }),
     );
+    if (!mounted) {
+      const region = regionAt(x, z);
+      if (region?.name === "Outside") {
+        // The loading court has no ceiling: support its lamp on a post.
+        cylinder(0.055, y + 0.28, x + 0.45, (y + 0.28) / 2, z, mats.metal);
+        cylinder(0.17, 0.06, x + 0.45, 0.03, z, mats.metal);
+        link([x + 0.45, y + 0.26, z], [x, y + 0.26, z], 0.04, mats.metal);
+      } else {
+        const ceiling =
+          region?.name === "Lobby"
+            ? 3.8
+            : region?.name === "Projection booth"
+              ? 6.8
+              : region?.ramp || region?.name === "Stair landing"
+                ? 7
+                : 6.2;
+        cylinder(0.16, 0.07, x, ceiling - 0.035, z, mats.brass);
+        link([x, ceiling - 0.06, z], [x, y + 0.22, z], 0.025, mats.metal);
+      }
+      cylinder(0.09, 0.14, x, y + 0.2, z, mats.brass);
+      cylinder(0.23, 0.08, x, y + 0.24, z, mats.dark, scene, 0.16);
+    }
     return l;
   }
   function label(text, x, y, z, w = 1.1, h = 0.25, rot = 0, opts = {}) {
@@ -412,7 +442,10 @@ export function buildCinema(scene, state) {
       door: id,
     });
     leaf.traverse((o) => {
-      if (o.isMesh) occluders.push(o);
+      if (o.isMesh) {
+        o.userData.interactionDoor = id;
+        occluders.push(o);
+      }
     });
     if (rightHinge) {
       leaf.position.x = width;
@@ -834,7 +867,7 @@ export function buildCinema(scene, state) {
   box(0.5, 0.01, 0.7, 16.8, 4.56, -4, mats.paper);
   cylinder(0.12, 0.035, 16.8, 4.56, -2, mats.brass);
   link([16.8, 4.58, -2], [16.85, 5.05, -2.05], 0.025, mats.brass);
-  light(16.8, 5.05, -2.1, "#f6d9a6", 3, 3);
+  light(16.8, 5.05, -2.1, "#f6d9a6", 3, 3, true);
   interact("boothDoor", "Open / close booth door", 12, 4.8, 0.1);
   // Projector beam is restrained, ends at the cinema screen, and follows power.
   const beamGeometry = new THREE.ConeGeometry(3.8, 22, 4, 1, true);

@@ -1,5 +1,12 @@
 # Validation
 
+## Booth door and fixture fix / September 2026
+
+- Reproduced the closed booth-door failure from inside using a saved investigation checkpoint: the original build offered no interaction.
+- Door interaction rays now ignore that door's own leaf, plate and handle. Other walls and doors still occlude interactions; photographic rays retain all occluders.
+- Regression checks cover opening and walking out from inside, saving and continuing, the stairs side, an angled approach, service and archive doors, and photographic occlusion before and after opening the booth.
+- Floating bulbs now have ceiling canopies, suspension rods, sockets and shades. The existing desk lamp keeps its stand; the exterior loading-court light uses a post.
+
 ## Anthology expansion / September 2026
 
 - Production chapter selection: both New Story and Continue routes passed, including shared effects settings and return through each pause menu. Switching documents removes the prior chapter diagnostics and releases its renderer, scene resources and audio context.
