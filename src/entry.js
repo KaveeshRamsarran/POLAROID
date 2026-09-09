@@ -5,6 +5,7 @@ import "./presentation.css";
 const chapter = new URLSearchParams(location.search).get("chapter");
 if (chapter === "blackwood") await import("./main.js");
 else if (chapter === "last-showing") await import("./cinema/game.js");
+else if (chapter === "vacancy") await import("./vacancy/game.js");
 else {
   const read = (key) => {
     try {
@@ -14,7 +15,8 @@ else {
     }
   };
   const blackwood = read("polaroid.save.v1"),
-    cinema = read("polaroid.last-showing.v1");
+    cinema = read("polaroid.last-showing.v1"),
+    vacancy = read("polaroid.vacancy.v1");
   const complete = read("polaroid.completed.v1") || {};
   document.querySelector("#menu").hidden = true;
   document.querySelector("#loading").hidden = true;
@@ -24,6 +26,16 @@ else {
 <article class="chapter-card blackwood selected" data-chapter="blackwood"><button class="chapter-name" aria-pressed="true"><small>CHAPTER 01</small><h2>BLACKWOOD HOUSE</h2></button><p>Return to the house that remembers you.</p><small class="chapter-progress">${complete.blackwood ? "STORY COMPLETED" : blackwood ? "SAVED STORY / " + Object.keys(blackwood.evidence || {}).length + " OF 4 MEMORIES" : "YOUR STORY BEGINS HERE"}</small><div class="chapter-actions"><a href="?chapter=blackwood&play=new">NEW STORY &#8599;</a>${blackwood ? '<a href="?chapter=blackwood&play=continue">CONTINUE &#8594;</a>' : "<button disabled>CONTINUE</button>"}</div></article>
 <article class="chapter-card cinema" data-chapter="cinema"><button class="chapter-name" aria-pressed="false"><small>CHAPTER 02</small><h2>THE LAST SHOWING</h2></button><p>A closing shift. An empty cinema. One last patron.</p><small class="chapter-progress">${cinema?.completed ? "STORY COMPLETED" : cinema ? "SAVED STORY" : "BELLWETHER CINEMA / ADMIT ONE"}</small><div class="chapter-actions"><a href="?chapter=last-showing&play=new">NEW STORY &#8599;</a>${cinema && !cinema.completed ? '<a href="?chapter=last-showing&play=continue">CONTINUE &#8594;</a>' : "<button disabled>CONTINUE</button>"}</div></article></section><footer><span>HEADPHONES RECOMMENDED</span><span><button id="anthology-settings">SETTINGS</button> / <button id="anthology-credits">CREDITS</button></span></footer>`;
   document.body.append(screen);
+  const motelBackground = document.createElement("img");
+  motelBackground.dataset.background = "vacancy";
+  motelBackground.src = "/chapter-art/vacancy.jpg";
+  motelBackground.alt = "";
+  screen.querySelector(".menu-backgrounds").append(motelBackground);
+  const motelRow = document.createElement("article");
+  motelRow.className = "chapter-card vacancy";
+  motelRow.dataset.chapter = "vacancy";
+  motelRow.innerHTML = `<button class="chapter-name" aria-pressed="false"><small>CHAPTER 03</small><h2>VACANCY</h2></button><p>A roadside motel. A family photograph. A room that disappeared.</p><small class="chapter-progress">${vacancy?.completed ? "STORY COMPLETED" : vacancy ? "SAVED STORY / " + Object.keys(vacancy.evidence || {}).length + " PRINTED DETAILS" : "BRIAR GLEN / YOUR ROOM IS READY"}</small><div class="chapter-actions"><a href="?chapter=vacancy&play=new">NEW STORY &#8599;</a>${vacancy && !vacancy.completed ? '<a href="?chapter=vacancy&play=continue">CONTINUE &#8594;</a>' : "<button disabled>CONTINUE</button>"}</div>`;
+  screen.querySelector(".chapter-grid").append(motelRow);
   function selectChapter(id) {
     screen
       .querySelectorAll("[data-background]")
@@ -38,9 +50,11 @@ else {
         .setAttribute("aria-pressed", String(selected));
     });
     document.querySelector("#menu-location").textContent =
-      id === "cinema"
-        ? "BELLWETHER CINEMA / DECEMBER 1998"
-        : "BLACKWOOD HOUSE / OCTOBER 1997";
+      id === "vacancy"
+        ? "BRIAR GLEN MOTOR LODGE / NOVEMBER 1999"
+        : id === "cinema"
+          ? "BELLWETHER CINEMA / DECEMBER 1998"
+          : "BLACKWOOD HOUSE / OCTOBER 1997";
   }
   screen.querySelectorAll("[data-chapter]").forEach((row) => {
     row.addEventListener("pointerenter", () =>
@@ -85,7 +99,7 @@ else {
         .join("") +
         '<label class="setting">ANALOG PICTURE<input data-setting="retroEffects" type="checkbox" ' +
         (settings.retroEffects !== false ? "checked" : "") +
-        '></label><label class="setting">GRAPHICS<select data-setting="quality"><option value="high">High</option><option value="low">Reduced effects</option></select></label><p>Settings are shared by both chapters.</p>',
+        '></label><label class="setting">GRAPHICS<select data-setting="quality"><option value="high">High</option><option value="low">Reduced effects</option></select></label><p>Settings are shared by all chapters.</p>',
     );
     document.querySelector('[data-setting="quality"]').value = settings.quality;
     document.querySelectorAll("[data-setting]").forEach(
@@ -104,15 +118,19 @@ else {
   document.querySelector("#anthology-credits").onclick = () =>
     anthologyPanel(
       "STILL / HERE",
-      "<p>POLAROID<br>Blackwood House / The Last Showing</p><p>Built with Three.js. Worlds, materials, camera and character models are created within the game. Shutter and concrete footstep recordings were supplied for POLAROID. The cinema manager is a fictional message voiced using Windows speech synthesis.</p><p>Bellwether Cinema and its characters are fictional.</p>",
+      "<p>POLAROID<br>Blackwood House / The Last Showing / Vacancy</p><p>Built with Three.js. Worlds, materials, camera and character models are created within the game. Shutter and concrete footstep recordings were supplied for POLAROID. The cinema manager is a fictional message voiced using Windows speech synthesis.</p><p>Bellwether Cinema, Briar Glen Motor Lodge and their characters are fictional.</p>",
     );
   screen.querySelectorAll('a[href*="play=new"]').forEach((link) =>
     link.addEventListener("click", (event) => {
-      const exists = link.href.includes("blackwood") ? blackwood : cinema;
+      const exists = link.href.includes("blackwood")
+        ? blackwood
+        : link.href.includes("vacancy")
+          ? vacancy
+          : cinema;
       if (
         exists &&
         !confirm(
-          "Start this story again? Its previous save will be replaced. Your other chapter is unaffected.",
+          "Start this story again? Its previous save will be replaced. Your other chapters are unaffected.",
         )
       )
         event.preventDefault();

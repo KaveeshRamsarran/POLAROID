@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { modelTools } from "../shared/model-tools.js";
 import { floorAt } from "./logic.js";
 
-export function cinemaCharacters(scene, mats, contactShadow) {
+export function cinemaCharacters(scene, mats, contactShadow, ground = floorAt) {
   const { mesh, box, round, ball, link, cylinder } = modelTools(scene, mats);
   const loader = new THREE.TextureLoader();
   let faceMap, castMap;
@@ -36,7 +36,7 @@ export function cinemaCharacters(scene, mats, contactShadow) {
       role === "ada" ? 0 : role === "manager" ? 1 : 2 + (audienceIndex++ % 2);
     const g = new THREE.Group();
     scene.add(g);
-    g.position.set(x, floorAt(x, z) || 0, z);
+    g.position.set(x, ground(x, z) || 0, z);
     g.userData.limbs = [];
     g.userData.hands = {};
     const cloth = mats.fabric.clone();

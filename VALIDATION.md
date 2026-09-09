@@ -1,5 +1,17 @@
 # Validation
 
+## Vacancy / Chapter 03 ? September 2026
+
+- Added a third selectable story with its own rendered background, New Story / Continue actions and completed marker. The right-side chapter list is compacted for shorter desktop windows.
+- Unit suite: 34 passed. New coverage includes independent versioned saves, continuous motel stairs, camera eligibility, sequential objectives, warning and stun timers, loss of sight, safe recovery, direct routes crossing doors, and a bounded journal that preserves the latest photograph of every clue.
+- Production anthology checks passed for all three launch/continue paths, shared settings, Blackwood save restoration, independent photographic journals and document teardown. Existing Blackwood gameplay files and its save key were not rewritten. Cinema's character factory retains its original floor function by default.
+- Vacancy systems checks passed against the production launcher: exact pause freeze, active held-print inspection, animated clerk travel up the actual stairs, concealment behind room walls, knocking/opening/passing a closed laundry door, a correctly framed flash stun, death/retry, preserved evidence, safe recovery grace, zero-film resupply and rejection of a photograph through a closed door.
+- The complete Vacancy progression chain uses real E interactions and C scene captures, verifies navigable routes and an actual keyboard walk through Room 6's door, and reaches the final photograph, ending and completed-story selection. Its checkpoint fixtures shorten travel between interactions; this is not an uninterrupted human playthrough.
+- Visual review covers the courtyard, furnished guest room, reception, laundry, upper walkway, developed clue photographs, final print and three-story menu. Corrections include doorway casings, supported signage, ground-floor frontage, bare trees, print development timing and lighting/facing of the final remembered figure.
+- Camera/hand, human mesh construction and face textures, travel-driven gait, procedural materials, analog grading, recorded shutter/footsteps and settings are reused. Vacancy adds contextual positional keys, telephone, bell, doors, drips and thunder. Important dialogue is text, not a newly recorded voice cast. No continuous static bed was added.
+- Production build passed with the existing Three.js chunk-size advisory. The standalone launcher and downloadable ZIP include the third chapter, its artwork, source, documentation and tests.
+- Limits: tests use isolated Chrome profiles and do not touch the player's normal browser saves. Human first-play duration, scare pacing, final sound balance and cross-hardware performance remain unverified.
+
 ## Blackwood family-home revamp / 9 September 2026
 
 - Replaced the green utility corridor with botanical wallpaper, aged plaster ceilings, timber floors and wainscot, cream cornices, wooden paneled doors, brass hardware, opal pendants and patterned rugs. Removed the overhead pipe runs, fluorescent tubes, ventilation grilles and fire cabinet. The hall now has a sideboard, lamp, letters, bench, coat hooks, a stopped clock and framed landscape artwork. Window curtains have rods and brackets; the upstairs stairs have timber treads and painted balusters.

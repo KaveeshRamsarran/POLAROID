@@ -23,7 +23,9 @@
     "test:cinema-presentation": "node scripts/cinema-presentation.mjs",
     "test:cinema-doors": "node scripts/cinema-door-regression.mjs",
     "test:analog-style": "node scripts/analog-style.mjs",
-    "test:cinema-expansion": "node scripts/cinema-expansion.mjs"
+    "test:cinema-expansion": "node scripts/cinema-expansion.mjs",
+    "test:vacancy": "node scripts/vacancy.mjs",
+    "test:vacancy-systems": "node scripts/vacancy-systems.mjs"
   },
   "dependencies": {
     "three": "0.180.0"

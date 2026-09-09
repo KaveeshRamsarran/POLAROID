@@ -13,7 +13,14 @@ page.setDefaultTimeout(60000);
 try {
   await page.goto(base);
   await page.locator(".chapter-grid").waitFor();
-  assert.equal(await page.locator(".chapter-card").count(), 2);
+  assert.equal(await page.locator(".chapter-card").count(), 3);
+  await page.locator(".chapter-card.vacancy").hover();
+  assert.equal(
+    await page.locator('[data-background="vacancy"]').getAttribute("class"),
+    "active",
+  );
+  await page.waitForTimeout(850);
+  await page.screenshot({ path: "artifacts/anthology-vacancy.png" });
   await page.locator(".chapter-card.cinema").hover();
   assert.equal(
     await page.locator('[data-background="cinema"]').getAttribute("class"),
@@ -96,9 +103,50 @@ try {
     (await page.evaluate(() => window.cinemaDiagnostics)).state.photos.length,
     1,
   );
+  await page.keyboard.press("Escape");
+  await page.click("#stories");
+  await page.locator(".chapter-grid").waitFor();
+  const previous = await page.evaluate(() => [
+    localStorage.getItem("polaroid.save.v1"),
+    localStorage.getItem("polaroid.last-showing.v1"),
+  ]);
+  await page.locator('.chapter-card.vacancy a[href*="play=new"]').click();
+  await page.click("#enter-vacancy");
+  await page.waitForFunction(() => vacancyDiagnostics.mode === "playing");
+  await page.keyboard.press("c");
+  await page.waitForFunction(
+    () => vacancyDiagnostics.state.photos.length === 1,
+  );
+  await page.keyboard.press("p");
+  await page.click("#stories");
+  await page.locator(".chapter-grid").waitFor();
+  assert.equal(
+    await page.evaluate(() => typeof window.vacancyDiagnostics),
+    "undefined",
+  );
+  assert.deepEqual(
+    await page.evaluate(() => [
+      localStorage.getItem("polaroid.save.v1"),
+      localStorage.getItem("polaroid.last-showing.v1"),
+    ]),
+    previous,
+  );
+  await page.locator('.chapter-card.vacancy a[href*="play=continue"]').click();
+  await page.click("#enter-vacancy");
+  await page.waitForFunction(() => vacancyDiagnostics.mode === "playing");
+  assert.equal(
+    (await page.evaluate(() => vacancyDiagnostics)).state.photos.length,
+    1,
+  );
+  assert.equal(
+    await page.evaluate(
+      () => JSON.parse(localStorage.getItem("polaroid.settings.v1")).effects,
+    ),
+    0.45,
+  );
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: both anthology launch/continue paths, shared settings, legacy save compatibility, independent photos and scene teardown.",
+    "PASS: all three anthology launch/continue paths, shared settings, legacy save compatibility, independent photos and scene teardown.",
   );
 } finally {
   await browser.close();

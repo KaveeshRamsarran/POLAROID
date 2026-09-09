@@ -2,7 +2,7 @@
 
 ![POLAROID anthology](artifacts/anthology.png)
 
-A playable first-person psychological horror anthology for desktop browsers. Choose **Chapter 01 - Blackwood House** or **Chapter 02 - The Last Showing** in the same POLAROID application. Both share its tactile camera, sculpted player hand, photographic identity and settings, with separate story saves.
+A playable first-person psychological horror anthology for desktop browsers. Choose **Chapter 01 - Blackwood House**, **Chapter 02 - The Last Showing** or **Chapter 03 - Vacancy** in the same POLAROID application. All three share its tactile camera, sculpted player hand, photographic identity and settings, with separate story saves.
 
 ## Visual presentation
 
@@ -10,7 +10,7 @@ Blackwood House now has the character of an old family home: faded botanical wal
 
 The Last Showing now includes optional physical records about the patron and his daughter, Ada's shift notes and a missing witness account. New documents stay in the photographic journal alongside the simpler main checklist. The cinema has aged plaster, patterned carpet, patched upholstery, mounted signs and clear lobby openings. Its human characters use distinct original face textures and articulated hands; see [chapter details](docs/THE-LAST-SHOWING.md) and [asset provenance](docs/CINEMA-ASSETS.md).
 
-A restrained analog picture pairs muted colors, gentle highlight spill and a slightly softer scene with clear sans-serif titles and subtitles. Both chapters share the treatment; disable **Analog picture** in settings for the clean render, or select reduced effects. Grain remains at 0.015 or below. The cinema figures have civilian jackets, shirts, trousers and more defined faces; contact shading and flashlight shadows ground the furniture.
+A restrained analog picture pairs muted colors, gentle highlight spill and a slightly softer scene with clear sans-serif titles and subtitles. All three chapters share the treatment; disable **Analog picture** in settings for the clean render, or select reduced effects. Grain remains at 0.015 or below. The cinema figures have civilian jackets, shirts, trousers and more defined faces; contact shading and flashlight shadows ground the furniture.
 
 ## Play
 
@@ -50,6 +50,14 @@ The production build is in `dist/`. Serve that directory over HTTP; opening `ind
 | Recall objective          | H                                   |
 | Pause                     | Esc or P                            |
 
+## Vacancy
+
+A flooded bridge strands Lena Ellis at Briar Glen Motor Lodge in November 1999. Her late father's camera reveals traces of a family holiday she remembers differently. Follow one photographic trail through a furnished motel, discover the missing Room 7, recover Evelyn's locket and make it back to your car.
+
+The clerk follows sight, nearby running and a physical patrol route. Listen for keys, close doors to break his view, and frame him with a flash to buy four seconds. The chapter includes a complete ending, persistent records and actual scene photographs, independent saves and emergency film. Its aged plaster, timber, fabric, human figures and understated effects match POLAROID's existing chapters.
+
+See the [chapter guide and spoiler walkthrough](docs/VACANCY.md). First-play duration and scare pacing await human playtesting.
+
 ## The Last Showing
 
 Bellwether Cinema is closing permanently. Complete three survey tasks, uncover Ada Bell's evacuation attempt with two photographs under one investigation reel, find the missing film, and open the service exit during the final screening. Clear objectives guide one step at a time; no drawer code or repeated audience comparisons are required. The patron advances when projection stops and stays where it is when the motor restarts. The expanded foyer separates ticketing, concessions and a furnished waiting lounge. Labelled hinged doors connect the auditorium, upstairs booth, archive, backstage and service route.
@@ -88,6 +96,9 @@ npm run test:death
 npm run test:polish
 npm run test:characters
 npm run test:analog-style
+npm run test:anthology
+npm run test:vacancy
+npm run test:vacancy-systems
 ```
 
 Browser tests require the development server and an installed Google Chrome. They create isolated browser profiles and do not use or modify your normal browser data.
@@ -103,6 +114,10 @@ The unit suite checks stairs, collision, sight lines, photographic targeting, pa
 Screenshots are saved to `artifacts/`. Performance samples are local test measurements, not a guarantee across hardware.
 
 ## Source
+
+- `src/entry.js`: three-chapter selection, previews and shared settings.
+- `src/vacancy/`: motel world, story, clerk, photographs and audio extensions.
+- `src/shared/navigation.js`: chapter-independent swept collision and navigation.
 
 - `src/main.js`: renderer, controls, camera capture, menus, journal, progression, saves.
 - `src/world.js`: architecture, geometry, procedural materials, lighting, and environmental details.
