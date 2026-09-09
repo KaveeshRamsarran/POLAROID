@@ -1,3 +1,5 @@
+import { cinemaCharacters } from "./characters.js";
+import { ageCinemaMaterials, detailCinema } from "./details.js";
 import * as THREE from "three";
 import { createSurface, repeatMaterial, surfaceKinds } from "../materials.js";
 import { modelTools } from "../shared/model-tools.js";
@@ -54,6 +56,7 @@ export function buildCinema(scene, state) {
   mats.wall.map.anisotropy = 16;
   mats.wall.color.set("#ffffff");
   mats.wall.normalScale.setScalar(0.22);
+  ageCinemaMaterials(mats);
   const { box, round, ball, cylinder, sign, mesh, link } = modelTools(
     scene,
     mats,
@@ -225,7 +228,7 @@ export function buildCinema(scene, state) {
       cx = (r.x1 + r.x2) / 2,
       cz = (r.z1 + r.z2) / 2;
     const floor = ["Auditorium", "Lobby"].includes(r.name)
-      ? mats.fabric
+      ? mats.carpet
       : mats.concrete;
     box(w, 0.2, d, cx, y - 0.1, cz, repeatMaterial(floor, w / 2, d / 2));
     const roof =
@@ -532,7 +535,21 @@ export function buildCinema(scene, state) {
   label("STAFF ONLY / ARCHIVE", -9.83, 2.95, 11, 2.3, 0.32, Math.PI / 2);
   label("PROJECTION / UPSTAIRS", 9.82, 2.95, 13, 2.4, 0.32, -Math.PI / 2);
   label("BACKSTAGE", -7, 3.2, -19.83, 1.8, 0.3);
-  label("SERVICE EXIT  >", -11.98, 2.3, -2.8, 1.8, 0.28);
+  // This is a wall-mounted direction board, not a sign hanging in mid-air.
+  const serviceSignBack = box(0.065, 0.36, 1.95, -10.145, 2.3, -3, mats.wood);
+  serviceSignBack.name = "service-sign-backing";
+  const serviceSign = label(
+    "<  SERVICE EXIT",
+    -10.184,
+    2.3,
+    -3,
+    1.8,
+    0.28,
+    -Math.PI / 2,
+  );
+  serviceSign.name = "service-direction-sign";
+  for (const z of [-3.88, -2.12])
+    ball(0.01, 0.013, 0.013, -10.192, 2.3, z, mats.brass);
   label("LOBBY  >", -13.83, 2.6, 11, 1.5, 0.28, Math.PI / 2);
   const exitCover = box(0.03, 2.55, 2, -13.91, 1.275, -18, mats.wall);
   label("EXIT", -13.8, 2.85, -18, 1.1, 0.28, Math.PI / 2, {
@@ -728,6 +745,12 @@ export function buildCinema(scene, state) {
   box(0.03, 0.18, 0.37, 8.36, 1.52, 16.3, mats.black);
   label("0.00", 8.335, 1.53, 16.3, 0.3, 0.12, -Math.PI / 2, { fg: "#9cab76" });
   round(0.6, 0.18, 0.35, 8.15, 1.28, 17.2, mats.fabric);
+  // The red mitten and folded timetable described in the lost-property record.
+  round(0.12, 0.022, 0.18, 8.06, 1.385, 17.17, mats.red, scene, 0.025);
+  round(0.045, 0.021, 0.08, 7.99, 1.385, 17.16, mats.red, scene, 0.017);
+  box(0.17, 0.009, 0.2, 8.23, 1.385, 17.25, mats.paper);
+  for (let i = 0; i < 5; i++)
+    box(0.13, 0.002, 0.004, 8.23, 1.391, 17.19 + i * 0.025, mats.dark);
   interact("belongings", "Inspect lost property", 7.6, 1.3, 17.2);
   // Upholstered waiting bench, individual cushions, seams and turned feet.
   solid(1.2, 0.8, 3.5, -8.8, 0.4, 16.5, mats.wood);
@@ -847,9 +870,44 @@ export function buildCinema(scene, state) {
     cylinder(0.38, 0.4, 0, 3.41, z, mats.ivory);
     light(0, 3.13, z, "#f6d7a2", 20, 13);
   }
-  for (const x of [-9.83, 9.83]) {
-    box(0.035, 1.05, 17.6, x, 0.55, 13, mats.wood);
-    box(0.05, 0.055, 17.6, x, 1.13, 13, mats.brass);
+  for (const [x, segments] of [
+    [
+      -9.83,
+      [
+        [4.2, 9.94],
+        [12.06, 21.8],
+      ],
+    ],
+    [
+      9.83,
+      [
+        [4.2, 11.94],
+        [14.06, 21.8],
+      ],
+    ],
+  ]) {
+    for (const [start, end] of segments) {
+      const panel = box(
+        0.035,
+        1.05,
+        end - start,
+        x,
+        0.55,
+        (start + end) / 2,
+        repeatMaterial(mats.wood, (end - start) / 3, 1),
+      );
+      panel.name = "lobby-dado-panel";
+      const rail = box(
+        0.05,
+        0.055,
+        end - start,
+        x,
+        1.13,
+        (start + end) / 2,
+        mats.brass,
+      );
+      rail.name = "lobby-dado-rail";
+    }
   }
 
   for (const [x, z, w, d] of [
@@ -911,14 +969,15 @@ export function buildCinema(scene, state) {
   light(16.8, 5.05, -2.1, "#f6d9a6", 3, 3, true);
   interact("boothDoor", "Open / close booth door", 12, 4.8, 0.1);
   // Projector beam is restrained, ends at the cinema screen, and follows power.
-  const beamGeometry = new THREE.ConeGeometry(3.8, 22, 4, 1, true);
+  const beamGeometry = new THREE.ConeGeometry(3.8, 22, 32, 1, true);
   beamGeometry.translate(0, -11, 0);
   const beam = new THREE.Mesh(
     beamGeometry,
     new THREE.MeshBasicMaterial({
       color: "#d8cfa8",
       transparent: true,
-      opacity: 0.025,
+      opacity: 0.007,
+      blending: THREE.AdditiveBlending,
       depthWrite: false,
       side: THREE.DoubleSide,
     }),
@@ -1044,203 +1103,9 @@ export function buildCinema(scene, state) {
   interact("exit", "Release the service exit", -13.1, 1.2, -18);
   // Figures use the shared terrain-aware gait, but ordinary cinema clothing and
   // a restrained face, with no Observer AI or Blackwood story dependencies.
-  function person(x, z, colour = "#4d4940") {
-    const g = new THREE.Group();
-    scene.add(g);
-    g.position.set(x, floorAt(x, z) || 0, z);
-    g.userData.limbs = [];
-    const cloth = mats.fabric.clone();
-    cloth.color.set(colour);
-    cloth.roughness = 0.97;
-    const trousers = mats.fabric.clone();
-    trousers.color.set("#373c3d");
-    trousers.roughness = 1;
-    const shirt = mats.fabric.clone();
-    shirt.color.set("#a99f89");
-    shirt.roughness = 0.96;
-    contactShadow(0, 0, 0.7, 0.58, 0, g);
-    const body = new THREE.Group();
-    g.add(body);
-    g.userData.body = body;
-    const torso = mesh(
-      new THREE.LatheGeometry(
-        [
-          new THREE.Vector2(0.19, 0.85),
-          new THREE.Vector2(0.2, 1.05),
-          new THREE.Vector2(0.17, 1.3),
-          new THREE.Vector2(0.24, 1.47),
-          new THREE.Vector2(0.065, 1.58),
-        ],
-        16,
-      ),
-      cloth,
-      0,
-      0,
-      0,
-      body,
-    );
-    torso.scale.z = 0.72;
-    // A worn civilian jacket, with a shirt, lapels, pockets and separate trousers.
-    const shirtFront = new THREE.BufferGeometry();
-    const shirtVertices = [],
-      shirtIndices = [];
-    for (const [i, [y, z, halfWidth]] of [
-      [1.25, 0.133, 0.035],
-      [1.3, 0.128, 0.035],
-      [1.47, 0.177, 0.05],
-      [1.56, 0.075, 0.04],
-    ].entries()) {
-      shirtVertices.push(-halfWidth, y, z, halfWidth, y, z);
-      if (i)
-        shirtIndices.push(
-          i * 2 - 2,
-          i * 2 - 1,
-          i * 2,
-          i * 2 - 1,
-          i * 2 + 1,
-          i * 2,
-        );
-    }
-    shirtFront.setAttribute(
-      "position",
-      new THREE.Float32BufferAttribute(shirtVertices, 3),
-    );
-    shirtFront.setIndex(shirtIndices);
-    shirtFront.computeVertexNormals();
-    mesh(shirtFront, shirt, 0, 0, 0, body);
-    for (const side of [-1, 1]) {
-      const lapel = new THREE.BufferGeometry();
-      lapel.setAttribute(
-        "position",
-        new THREE.Float32BufferAttribute(
-          [
-            side * 0.065,
-            1.54,
-            0.102,
-            side * 0.125,
-            1.46,
-            0.146,
-            side * 0.045,
-            1.3,
-            0.138,
-          ],
-          3,
-        ),
-      );
-      lapel.setIndex(side === -1 ? [0, 1, 2] : [2, 1, 0]);
-      lapel.computeVertexNormals();
-      mesh(lapel, cloth, 0, 0, 0, body);
-      round(0.085, 0.105, 0.008, side * 0.125, 1.115, 0.14, cloth, body, 0.003);
-      link(
-        [side * 0.08, 1.17, 0.16],
-        [side * 0.165, 1.17, 0.16],
-        0.0025,
-        mats.dark,
-        body,
-      );
-      ball(0.083, 0.078, 0.09, side * 0.19, 1.425, 0, cloth, body);
-    }
-    for (const y of [1.16, 1.26, 1.36])
-      ball(0.006, 0.006, 0.003, 0, y, 0.145, mats.dark, body);
-    cylinder(0.058, 0.14, 0, 1.6, 0, mats.skin, body);
-    const head = new THREE.Group();
-    head.position.y = 1.65;
-    body.add(head);
-    g.userData.head = head;
-    // One continuous head surface: shaped jaw, eye sockets and nose bridge.
-    // Close-cropped hair and facial shadows are vertex colour, not floating
-    // balls or painted-on eyebrows. The face stays deliberately indistinct.
-    const faceGeometry = new THREE.SphereGeometry(1, 64, 48);
-    const vertices = faceGeometry.attributes.position;
-    const faceColours = [];
-    const gaussian = (x, y, cx, cy, sx, sy) =>
-      Math.exp(-(((x - cx) / sx) ** 2) - ((y - cy) / sy) ** 2);
-    for (let i = 0; i < vertices.count; i++) {
-      const nx = vertices.getX(i),
-        ny = vertices.getY(i),
-        nz = vertices.getZ(i);
-      const y = 0.065 + ny * 0.155;
-      const x = nx * 0.105 * (1 - 0.16 * Math.max(0, -ny));
-      const front = THREE.MathUtils.smoothstep(nz, 0.2, 0.72);
-      const sockets =
-        gaussian(x, y, -0.039, 0.102, 0.027, 0.018) +
-        gaussian(x, y, 0.039, 0.102, 0.027, 0.018);
-      const nose = gaussian(x, y, 0, 0.078, 0.015, 0.039);
-      const mouth = gaussian(x, y, 0, 0.022, 0.034, 0.0035);
-      let z = nz * 0.105;
-      z += front * (0.033 * nose - 0.008 * sockets - 0.003 * mouth);
-      const hairline =
-        0.005 + 0.156 * THREE.MathUtils.smoothstep(nz, -0.5, 0.5);
-      const hair = THREE.MathUtils.smoothstep(
-        y,
-        hairline - 0.004,
-        hairline + 0.003,
-      );
-      const shade = 1 - front * (0.27 * sockets + 0.3 * mouth);
-      faceColours.push(
-        THREE.MathUtils.lerp(shade, 0.115, hair),
-        THREE.MathUtils.lerp(shade * 0.96, 0.12, hair),
-        THREE.MathUtils.lerp(shade * 0.94, 0.115, hair),
-      );
-      vertices.setXYZ(i, x, y, z);
-    }
-    faceGeometry.setAttribute(
-      "color",
-      new THREE.Float32BufferAttribute(faceColours, 3),
-    );
-    faceGeometry.computeVertexNormals();
-    const skin = mats.skin.clone();
-    skin.color.set("#ac9080");
-    skin.vertexColors = true;
-    skin.roughness = 0.96;
-    mesh(faceGeometry, skin, 0, 0, 0, head);
-    for (const side of [-1, 1]) {
-      ball(0.012, 0.028, 0.019, side * 0.099, 0.065, -0.008, mats.skin, head);
-      ball(0.009, 0.0035, 0.004, side * 0.039, 0.103, 0.09, mats.dark, head);
-      const arm = new THREE.Group();
-      arm.position.set(side * 0.23, 1.43, 0);
-      body.add(arm);
-      link([0, 0, 0], [side * 0.04, -0.32, 0], 0.075, cloth, arm);
-      const elbow = new THREE.Group();
-      elbow.position.set(side * 0.04, -0.32, 0);
-      arm.add(elbow);
-      link([0, 0, 0], [side * 0.025, -0.3, 0.015], 0.059, cloth, elbow);
-      ball(0.045, 0.09, 0.024, side * 0.025, -0.34, 0.02, mats.skin, elbow);
-      cylinder(0.061, 0.06, side * 0.023, -0.29, 0.014, cloth, elbow);
-      ball(0.025, 0.035, 0.024, side * 0.055, -0.34, 0.04, mats.skin, elbow);
-      g.userData.limbs.push({ mesh: arm, joint: elbow, type: "arm", side });
-      const leg = new THREE.Group();
-      leg.position.set(side * 0.12, 0.93, 0);
-      g.add(leg);
-      link([0, 0, 0], [side * 0.02, -0.43, 0.06], 0.085, trousers, leg);
-      const knee = new THREE.Group();
-      knee.position.set(side * 0.02, -0.43, 0.06);
-      leg.add(knee);
-      link([0, 0, 0], [side * 0.03, -0.41, -0.06], 0.065, trousers, knee);
-      const foot = new THREE.Group();
-      foot.position.set(side * 0.03, -0.41, -0.06);
-      knee.add(foot);
-      ball(0.074, 0.058, 0.145, 0, -0.025, 0.06, mats.dark, foot);
-      round(0.14, 0.025, 0.26, 0, -0.062, 0.06, mats.black, foot, 0.009);
-      for (let i = 0; i < 3; i++)
-        link(
-          [-0.04, 0.016, 0.04 + i * 0.025],
-          [0.04, 0.016, 0.04 + i * 0.025],
-          0.003,
-          mats.wood,
-          foot,
-        );
-      g.userData.limbs.push({
-        mesh: leg,
-        joint: knee,
-        foot,
-        type: "leg",
-        side,
-      });
-    }
-    return g;
-  }
-  const patron = person(state.patron.x, state.patron.z);
+  const person = cinemaCharacters(scene, mats, contactShadow);
+  const patron = person(state.patron.x, state.patron.z, "#4d4940", "patron");
+  patron.name = "recurring-patron";
   patron.rotation.y = Math.PI;
   const memories = { opening: [], return: [], incident: [], complete: [] };
   for (const [reel, positions] of Object.entries({
@@ -1259,18 +1124,34 @@ export function buildCinema(scene, state) {
       const p = person(x, z, reel === "opening" ? "#796b56" : "#4c6170");
       p.rotation.y = Math.PI;
       p.position.y = -0.3;
+      for (const limb of p.userData.limbs) {
+        limb.mesh.rotation.x = limb.type === "leg" ? -1.3 : -0.45;
+        limb.joint.rotation.x = limb.type === "leg" ? 1.4 : -0.65;
+      }
       memories[reel].push(p);
     }
-  const ada = person(-7, -21.8, "#506674");
+  const ada = person(-7, -21.8, "#506674", "ada");
   ada.rotation.y = -Math.PI / 2;
-  const key = box(0.035, 0.18, 0.08, -0.33, 1.08, 0.19, mats.brass, ada);
-  box(0.12, 0.11, 0.015, -0.33, 0.96, 0.2, mats.paper, ada);
+  const key = new THREE.Group();
+  ada.userData.hands[-1].add(key);
+  key.position.set(0, -0.045, 0.024);
+  const keyRing = mesh(
+    new THREE.TorusGeometry(0.025, 0.004, 6, 20),
+    mats.brass,
+    0,
+    0,
+    0,
+    key,
+  );
+  box(0.014, 0.095, 0.012, 0, -0.065, 0, mats.brass, key);
+  box(0.045, 0.02, 0.012, 0.016, -0.1, 0, mats.brass, key);
+  box(0.1, 0.09, 0.012, 0, -0.16, 0, mats.paper, key);
   ada.userData.limbs.find(
     (l) => l.type === "arm" && l.side === -1,
   ).mesh.rotation.x = -0.8;
   memories.incident.push(ada);
   memories.complete.push(ada);
-  const manager = person(-12.3, -17, "#564130");
+  const manager = person(-12.3, -17, "#564130", "manager");
   manager.rotation.y = Math.PI / 2;
   memories.incident.push(manager);
   const obstruction = box(0.65, 1.15, 1.7, -13.1, 0.575, -18, mats.wood);
@@ -1291,9 +1172,52 @@ export function buildCinema(scene, state) {
   ];
   for (const p of evacuees) p.rotation.y = -Math.PI / 2;
   memories.complete.push(...evacuees);
-  const coat = round(0.57, 0.15, 0.45, 6.5, 0.64, -2, mats.fabric);
+  const coat = new THREE.Group();
+  scene.add(coat);
+  coat.position.set(6.5, 0.64, -2);
+  const coatWool = mats.fabric.clone();
+  coatWool.color.set("#4d4940");
+  round(0.57, 0.12, 0.43, 0, 0, 0, coatWool, coat, 0.035);
+  round(0.51, 0.07, 0.39, 0, 0.08, 0.015, coatWool, coat, 0.024);
+  for (const side of [-1, 1]) {
+    const sleeve = round(
+      0.14,
+      0.065,
+      0.39,
+      side * 0.18,
+      0.13,
+      0.005,
+      coatWool,
+      coat,
+      0.025,
+    );
+    sleeve.rotation.y = side * 0.18;
+    for (let i = 0; i < 5; i++)
+      link(
+        [side * 0.18 - 0.04 + i * 0.018, 0.166, -0.11],
+        [side * 0.18 - 0.035 + i * 0.018, 0.166, -0.085],
+        0.002,
+        mats.ivory,
+        coat,
+      );
+  }
+  for (let i = 0; i < 3; i++)
+    ball(0.012, 0.004, 0.012, 0, 0.125, -0.12 + i * 0.095, mats.dark, coat);
+  box(0.13, 0.004, 0.09, 0.04, 0.172, 0.075, mats.paper, coat);
   interact("coat", "Examine the folded coat / F8", 6.5, 1, -1.7);
   target("patron", state.patron.x, 1.2, state.patron.z, { maxDistance: 26 });
+  target("watch", state.patron.x, 1, state.patron.z, { maxDistance: 4.5 });
+  targets.watch.facing = new THREE.Vector3(0, 0, 1);
+  detailCinema(scene, mats, {
+    box,
+    round,
+    cylinder,
+    ball,
+    link,
+    label,
+    interact,
+    solid,
+  });
   target("doorway", -13.85, 1.5, -18, {
     requiredReel: "incident",
     maxDistance: 6,
@@ -1413,6 +1337,15 @@ export function buildCinema(scene, state) {
       1.5 + (floorAt(s.patron.x, s.patron.z) || 0),
       s.patron.z,
     );
+    patron.updateMatrixWorld(true);
+    patron.userData.watch.getWorldPosition(targets.watch.position);
+    ada.updateMatrixWorld(true);
+    key.getWorldPosition(targets.ada.position);
+    targets.watch.facing
+      .set(0, 0, 1)
+      .applyQuaternion(
+        patron.userData.watch.getWorldQuaternion(new THREE.Quaternion()),
+      );
     beam.visible = s.projector.status === "running";
     dust.visible = beam.visible;
     if (beam.visible)
@@ -1461,6 +1394,7 @@ export function buildCinema(scene, state) {
   }
   return {
     mats,
+    ready: person.ready,
     doors,
     nav,
     solids,
@@ -1475,5 +1409,27 @@ export function buildCinema(scene, state) {
     update,
     makeCamera: (parent) => makeCamera(parent, mats),
     lights,
+    architectureBounds: () => {
+      const result = [];
+      scene.updateMatrixWorld(true);
+      scene.traverse((o) => {
+        if (
+          [
+            "lobby-dado-panel",
+            "lobby-dado-rail",
+            "service-sign-backing",
+            "service-direction-sign",
+          ].includes(o.name)
+        ) {
+          const bounds = new THREE.Box3().setFromObject(o);
+          result.push({
+            name: o.name,
+            min: bounds.min.toArray(),
+            max: bounds.max.toArray(),
+          });
+        }
+      });
+      return result;
+    },
   };
 }

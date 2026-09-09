@@ -1,5 +1,16 @@
 # Validation
 
+## Bellwether lore and environment expansion / September 2026
+
+- Optional records connect the patron's repaired coat, Thomas Avery's reservation, Ruth's lost property and letter, Ada's shift notes, and the missing witness account. Found records persist separately from photographs; older saves infer already-collected coat and maintenance notes. All original puzzle gates remain unchanged.
+- Unit suite: 24 passed, including migration of saves without the new lore field and confirmation that optional discoveries do not unlock or obstruct the main story.
+- Browser expansion checks cover actual rendered dado bounds at both lobby openings, keyboard passage through both, service-sign backing attached to the wall, five reachable physical records, saved journal entries, a real cuff photograph from the front and rejection from behind. Physical records remain active gameplay.
+- Full cinema progression, threat/stair pursuit, death/retry, emergency film, projector silence and anthology save isolation passed with the expanded world. The progression script uses fixture checkpoints between actual interactions and exposures; this is not a timed human playtest.
+- Original facial albedos are blended over shaped head meshes; Ada, the manager and the recurring patron have distinct portraits. Character textures finish loading before the in-world staff photograph is captured. Hands have palms, fingers and thumbs; remembered seated audiences use bent knees and resting arms.
+- Visual checks include the human patron, worn carpet/plaster, both clear lobby openings, wall-mounted service sign, and the records journal. No extra grain or continuous static was introduced.
+- Ada's key is parented to her hand and the photographic target follows its world position. The projector shaft uses a softer, rounded additive volume. A short isolated 1280×800 foyer sample measured 19.9 ms median and 20.1 ms p95 frame intervals on this host; this is not a cross-hardware guarantee.
+- Production build and offline package include both facial texture assets. Generation prompts and provenance are recorded in `docs/CINEMA-ASSETS.md`.
+
 ## Analog presentation / September 2026
 
 - Shared scene presentation uses an HDR target capped at 900 vertical pixels, two-sample antialiasing, restrained color separation, highlight spill, desaturation and shadow/highlight grading. HUD text and captured prints remain sharp. No animated tape wobble or added hiss.

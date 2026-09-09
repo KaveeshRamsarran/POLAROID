@@ -2,7 +2,7 @@
 
 Chapter 02 lives in the same application as Blackwood House. Open POLAROID, choose a story, then enter it to enable mouse capture and audio. Either chapter can be started independently. The pause menu returns to story selection.
 
-Bellwether Cinema, November 1998. A temporary worker photographs damaged equipment and clears a closing checklist. The printer issues an admission for a screening nobody has booked. A patron appears in the developing print.
+Bellwether Cinema, December 1998. A temporary worker photographs damaged equipment and clears a closing checklist. The printer issues an admission for a screening nobody has booked. A patron appears in the developing print.
 
 ## Playing
 
@@ -19,6 +19,16 @@ Projector controls, physical documents and held-print inspection do **not** paus
 The 20–35 minute duration is a design target. Automated verification does not establish first-play duration, scare effectiveness, or speaker/headphone balance.
 
 ## Spoiler walkthrough
+
+### The people Bellwether remembers
+
+The optional records connect the patron with Thomas Avery, a Friday regular who reserved F8 and the neighbouring seat for his daughter Ruth. He repaired the foyer clock and wore a coat with pale stitching at the right cuff. During the 1978 incident, Ada led Ruth through the service passage; Avery returned for the people still waiting for the film to restart. Ruth survived and continued asking for his belongings. The recurring patron retains the same repair across memory layers, although the game leaves the exact nature of that recurrence unresolved.
+
+The physical records include the closing notice and reservation book on the lobby counter, lost property at concessions, Ada's shift book on the upstairs workbench, Ruth's letter at the archive table, and a witness copy on the passage maintenance board. Collected text is preserved under **Found records** in the journal. The coat and incident records from existing saves appear there automatically. A close, correctly framed photograph of the patron's visible watch and cuff adds another optional detail.
+
+These discoveries add context without introducing extra locks, combinations or mandatory errands. The core route below still works without them. Reading a physical document remains active gameplay; the journal pauses it.
+
+### Main route
 
 1. Listen to the recorder at the ticket counter. Photograph the torn cushion on D3 from the front, then photograph the projector upstairs. The journal lists only these three survey tasks.
 2. Take the ticket from the lobby printer. Photograph F8 while the opening reel runs. Inspect the coat, return upstairs, and choose REPAIR & RESTART. The patron moves during the silence and stops wherever it is when projection resumes.
@@ -61,6 +71,7 @@ node scripts/cinema-systems.mjs http://127.0.0.1:3001
 node scripts/cinema-routes.mjs http://127.0.0.1:3001
 node scripts/cinema-presentation.mjs http://127.0.0.1:3001
 node scripts/cinema-photos.mjs http://127.0.0.1:3001
+node scripts/cinema-expansion.mjs http://127.0.0.1:3001
 node scripts/anthology.mjs http://127.0.0.1:3001
 node scripts/progression.mjs http://127.0.0.1:3001
 node scripts/death.mjs http://127.0.0.1:3001

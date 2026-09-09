@@ -1,4 +1,38 @@
 /* Shared anthology direction: ordinary places, muted light, plain readable UI. */
+body .lore-journal {
+  margin: 28px 0;
+  border-top: 1px solid #9e8d6a55;
+  padding-top: 16px;
+}
+body .lore-journal h3 {
+  font:
+    600 15px Arial,
+    sans-serif;
+  letter-spacing: 0.08em;
+}
+body .lore-journal small {
+  color: #b0a38d;
+}
+body .lore-journal details {
+  border-bottom: 1px solid #9e8d6a33;
+  padding: 12px 0;
+}
+body .lore-journal summary {
+  cursor: pointer;
+  font:
+    600 14px Arial,
+    sans-serif;
+  color: #e6d9bd;
+}
+body .lore-journal summary:focus-visible {
+  outline: 1px solid #e6d9bd;
+  outline-offset: 5px;
+}
+body .lore-date {
+  color: #c3a77e;
+  font: 12px monospace;
+  letter-spacing: 0.04em;
+}
 html:root {
   --paper: #eeeae0;
   --muted: #a5a5a0;

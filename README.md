@@ -6,6 +6,8 @@ A playable first-person psychological horror anthology for desktop browsers. Cho
 
 ## Visual presentation
 
+The Last Showing now includes optional physical records about the patron and his daughter, Ada's shift notes and a missing witness account. New documents stay in the photographic journal alongside the simpler main checklist. The cinema has aged plaster, patterned carpet, patched upholstery, mounted signs and clear lobby openings. Its human characters use distinct original face textures and articulated hands; see [chapter details](docs/THE-LAST-SHOWING.md) and [asset provenance](docs/CINEMA-ASSETS.md).
+
 A restrained analog picture pairs muted colors, gentle highlight spill and a slightly softer scene with clear sans-serif titles and subtitles. Both chapters share the treatment; disable **Analog picture** in settings for the clean render, or select reduced effects. Grain remains at 0.015 or below. The cinema figures have civilian jackets, shirts, trousers and more defined faces; contact shading and flashlight shadows ground the furniture.
 
 ## Play

@@ -18,6 +18,7 @@ export const EVIDENCE = {
   frame: "Splice reference / 17",
   evacuation: "The part they cut away",
   final: "One admission. One departure.",
+  watch: "F8 / pale stitches, a worn watch strap",
 };
 export function newStory() {
   return {
@@ -29,6 +30,7 @@ export function newStory() {
     tasks: {},
     items: {},
     events: {},
+    lore: {},
     reels: ["opening"],
     activeReel: "opening",
     projector: { status: "running", remaining: 420 },
@@ -54,6 +56,7 @@ export function restoreStory(raw) {
     "tasks",
     "items",
     "events",
+    "lore",
     "projector",
     "patron",
     "doors",

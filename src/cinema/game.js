@@ -2,6 +2,7 @@ import { createAnalogPresentation } from "../shared/analog-presentation.js";
 import * as THREE from "three";
 import { buildCinema } from "./world.js";
 import { CinemaSound } from "./audio.js";
+import { LORE, loreText, loreJournal } from "./lore.js";
 import {
   SAVE_KEY,
   REELS,
@@ -107,6 +108,9 @@ function applySettings() {
   camera.fov = settings.fov;
   camera.updateProjectionMatrix();
 }
+// The staff portrait is a scene capture too: wait for facial albedos before
+// taking it, so fast launches cannot permanently bake an untextured face.
+await world.ready;
 applySettings();
 {
   const portrait = new THREE.PerspectiveCamera(34, 1.1 / 0.8, 0.035, 20);
@@ -284,7 +288,7 @@ function journal() {
       )
       .join(
         "",
-      )}</div>${state.items.ticket ? '<p class="cinema-note">SCREEN ONE · ROW F · SEAT 8 · ADMIT ONE</p>' : ""}${state.items.records ? '<p class="cinema-note">Maintenance: the service leaf binds against stored cabinets. The manager declined clearance before the 1978 screening. Separately stored film: drawer A. BELL. Incident report: “Projectionist absent.” The next page has been removed.</p>' : ""}${state.items.reference ? `<img style="width:180px;border:10px solid #d8d0b5" src="${state.items.referenceImage || ""}" alt="1978 survey photograph"><p class="cinema-note">Survey print: stand on the brass square in the service passage, facing the sealed wall. The 1978 reel remembers an opening beneath the paint.</p>` : ""}<div class="cinema-journal">${state.photos.map((p) => `<figure><img src="${p.image}" alt="${p.caption}"><figcaption>${p.caption}<br>${REELS[p.reel]?.name || ""}</figcaption>${p.evidence.length ? "" : `<button data-delete="${p.id}">DISCARD PRINT</button>`}</figure>`).join("")}</div>`,
+      )}</div>${state.items.ticket ? '<p class="cinema-note">SCREEN ONE · ROW F · SEAT 8 · ADMIT ONE</p>' : ""}${state.items.records ? '<p class="cinema-note">Maintenance: the service leaf binds against stored cabinets. The manager declined clearance before the 1978 screening. Separately stored film: drawer A. BELL. Incident report: “Projectionist absent.” The next page has been removed.</p>' : ""}${state.items.reference ? `<img style="width:180px;border:10px solid #d8d0b5" src="${state.items.referenceImage || ""}" alt="1978 survey photograph"><p class="cinema-note">Survey print: stand on the brass square in the service passage, facing the sealed wall. The 1978 reel remembers an opening beneath the paint.</p>` : ""}${loreJournal(state)}<div class="cinema-journal">${state.photos.map((p) => `<figure><img src="${p.image}" alt="${p.caption}"><figcaption>${p.caption}<br>${REELS[p.reel]?.name || ""}</figcaption>${p.evidence.length ? "" : `<button data-delete="${p.id}">DISCARD PRINT</button>`}</figure>`).join("")}</div>`,
     [],
     true,
   );
@@ -382,6 +386,14 @@ function projectorPanel() {
   );
 }
 function interact(id) {
+  if (id.startsWith("lore:")) {
+    const key = id.slice(5);
+    if (!LORE[key]) return;
+    state.lore[key] = true;
+    panel(LORE[key].title, loreText(key));
+    save();
+    return;
+  }
   if (id.startsWith("door:")) {
     const key = id.slice(5),
       door = world.doors.find((d) => d.id === key);
@@ -418,9 +430,9 @@ function interact(id) {
   }
   if (id === "belongings") {
     state.tasks.belongings = true;
-    milestone(
-      "A child’s glove. Three umbrellas. No names. Bagged for collection.",
-    );
+    state.lore.belongings = true;
+    panel(LORE.belongings.title, loreText("belongings"));
+    save();
   }
   if (id === "sorted") {
     state.tasks.sorted = true;
@@ -436,10 +448,8 @@ function interact(id) {
   }
   if (id === "records") {
     state.items.records = true;
-    panel(
-      "TWO ACCOUNTS",
-      '<p class="cinema-note">MAINTENANCE / 14 NOVEMBER 1978<br>Service leaf binds against stored cabinets. Clearance requested. Manager declined: “After the late show.”</p><p class="cinema-note">INCIDENT / 15 NOVEMBER 1978<br>“Projectionist Ada Bell absent from post. Evacuation delayed.”<br>The signature page and witness account are missing.</p><p class="cinema-note">FILM STORAGE<br>The removed section is in the drawer marked A. BELL. Photograph the service exit and Ada before taking it.</p>',
-    );
+    state.lore.records = true;
+    panel(LORE.records.title, loreText("records"));
     save();
   }
   if (id === "reference") {
@@ -467,9 +477,11 @@ function interact(id) {
   }
   if (id === "coat" && state.evidence.first && !state.items.coat) {
     state.items.coat = true;
+    state.lore.coat = true;
     milestone(
-      "The coat is still warm. A ticket stub is sewn into the lining: F8. The projector begins to slap.",
+      "A warm coat. Pale stitches at the cuff. A note to Ruth: wait by the side door. Kept in your journal. The projector begins to slap.",
     );
+    panel(LORE.coat.title, loreText("coat"));
     audio.mechanism({ x: 6.5, y: 0.6, z: -2 });
   }
   if (id === "boothDoor") {
@@ -499,7 +511,7 @@ function interact(id) {
       save();
       panel(
         "THE COMPLETE REEL",
-        '<p class="cinema-note">The missing section fits. Ada was opening a service route while someone held the auditorium doors shut.</p><p>You have three minutes. Start the film, go downstairs through STAFF ONLY, and open the service exit. If the reel ends, return to the projector and rewind it.</p>',
+        '<p class="cinema-note">The missing section fits. Ada was opening the service route. A man in a repaired coat went back into the aisle to bring the others. Beyond the door, a girl in a red scarf was waiting.</p><p>You have three minutes. Start the film, go downstairs through STAFF ONLY, and open the service exit. If the reel ends, return to the projector and rewind it.</p>',
         [
           {
             id: "final-start",
@@ -551,6 +563,10 @@ function interact(id) {
 function interactTarget() {
   const direction = new THREE.Vector3();
   camera.getWorldDirection(direction);
+  const aimScore = (target) => {
+    const offset = target.position.clone().sub(camera.position);
+    return offset.length() + (1 - offset.normalize().dot(direction)) * 5;
+  };
   return world.interactions
     .filter((t) => {
       if (
@@ -576,11 +592,7 @@ function interactTarget() {
         visible(t.position, 0.12, door)
       );
     })
-    .sort(
-      (a, b) =>
-        a.position.distanceTo(camera.position) -
-        b.position.distanceTo(camera.position),
-    )[0];
+    .sort((a, b) => aimScore(a) - aimScore(b))[0];
 }
 const ray = new THREE.Raycaster();
 function visible(position, tolerance = 0.2, interactionDoor = null) {
@@ -606,7 +618,11 @@ function eligible(id) {
   return canRegisterPhoto({
     reel: state.activeReel,
     requiredReel: t.requiredReel,
-    visible: visible(t.position),
+    visible:
+      visible(t.position) &&
+      (!t.facing ||
+        t.facing.dot(camera.position.clone().sub(t.position).normalize()) >
+          0.2),
     framed:
       ndc.z > -1 &&
       ndc.z < 1 &&
@@ -718,6 +734,12 @@ function capture() {
         ids.push(state.activeReel);
     }
   }
+  if (
+    state.evidence.first &&
+    state.projector.status === "running" &&
+    eligible("watch")
+  )
+    ids.push("watch");
   if (state.projector.status === "running" && state.events.jamRepaired) {
     if (state.items.reference && eligible("doorway")) ids.push("doorway");
     if (eligible("figure")) ids.push("figure");
@@ -787,6 +809,12 @@ function capture() {
     );
   else if (fresh.includes("doorway"))
     subtitle("A door under the paint. The handle is real.", 7, true);
+  else if (fresh.includes("watch"))
+    subtitle(
+      "The same pale repair as the coat at F8. Someone was waiting for this man outside.",
+      8,
+      true,
+    );
   else if (fresh.includes("frame"))
     subtitle(
       "An old splice mark. This is an extra photograph; your checklist shows what you need next.",
@@ -830,7 +858,7 @@ function finish() {
   document.exitPointerLock?.();
   $("#overlay").hidden = false;
   $("#overlay-content").innerHTML =
-    `<div class="eyebrow">CHAPTER 02 / COMPLETED</div><h2>THE LAST SHOWING</h2><figure style="float:right;width:240px;padding:12px;background:#d4ceb8;margin:0 0 20px 25px"><img style="width:100%" src="${state.photos.find((p) => p.id === state.evidence.final)?.image || ""}" alt="The final photograph: a patron outside the open exit"><figcaption style="font:11px monospace;color:#3d4237;margin-top:10px">ONE ADMISSION. ONE DEPARTURE.</figcaption></figure><p class="cinema-note">The complete reel showed Ada Bell opening the service passage. The stored cabinets, the delay, the people following her: all of it was missing from the report.</p><p class="cinema-note">You leave the survey envelope with the photographs inside.<br>There is one extra ticket in your pocket.<br><br>ADMIT ONE. The corner has been torn off.</p><div class="cinema-controls"><button id="ending-stories">RETURN TO POLAROID</button></div>`;
+    `<div class="eyebrow">CHAPTER 02 / COMPLETED</div><h2>THE LAST SHOWING</h2><figure style="float:right;width:240px;padding:12px;background:#d4ceb8;margin:0 0 20px 25px"><img style="width:100%" src="${state.photos.find((p) => p.id === state.evidence.final)?.image || ""}" alt="The final photograph: a patron outside the open exit"><figcaption style="font:11px monospace;color:#3d4237;margin-top:10px">ONE ADMISSION. ONE DEPARTURE.</figcaption></figure><p class="cinema-note">The complete memory shows Ada opening the passage and a man returning for the people still waiting in their seats. The girl made it outside. Her father never heard her answer. The stored cabinets, Hale?s delay, Ada?s service key: your photographs preserve what the report removed.</p><p class="cinema-note">You leave the photographs with the survey envelope, addressed to Ruth Avery. Outside, a man stands beneath the exit light. His right hand is open.<br><br>There is one extra ticket in your pocket. ADMIT ONE. For the first time, the corner has been torn off.</p><div class="cinema-controls"><button id="ending-stories">RETURN TO POLAROID</button></div>`;
   $("#ending-stories").onclick = () => (location.href = "./");
 }
 function load(useSave) {
@@ -867,7 +895,7 @@ function load(useSave) {
   subtitle(
     useSave
       ? "Checkpoint restored. Eighteen seconds to find your bearings."
-      : "Bellwether Cinema. November 1998. The recorder is on the ticket counter.",
+      : "Bellwether Cinema. December 1998. The recorder is on the ticket counter.",
     8,
     true,
   );
@@ -1360,6 +1388,7 @@ Object.defineProperty(window, "cinemaDiagnostics", {
     repair,
     develop,
     patronVisible: world.patron.visible,
+    architecture: world.architectureBounds(),
     footfalls: world.patron.userData.footfallCount || 0,
     motorGain: audio.motorGain?.gain.value,
     targets: Object.fromEntries(
@@ -1392,7 +1421,7 @@ Object.defineProperty(window, "cinemaNavigation", {
 const launch = document.createElement("div");
 launch.className = "story-launch";
 launch.innerHTML =
-  '<div class="launch-inner"><div class="eyebrow">POLAROID / CHAPTER 02</div><h1>THE LAST SHOWING</h1><p>Bellwether Cinema, November 1998.<br>One closing shift. A camera. An empty screen.</p><button id="enter-story" class="filled-button">ENTER BELLWETHER →</button><p style="font:12px/1.8 monospace">WASD move · Mouse look · E interact<br>C photograph · Right mouse viewfinder · F light<br>J journal · R inspect print · Escape pause</p><a href="./">BACK TO STORIES</a></div>';
+  '<div class="launch-inner"><div class="eyebrow">POLAROID / CHAPTER 02</div><h1>THE LAST SHOWING</h1><p>Bellwether Cinema, December 1998.<br>One closing shift. A camera. An empty screen.</p><button id="enter-story" class="filled-button">ENTER BELLWETHER →</button><p style="font:12px/1.8 monospace">WASD move · Mouse look · E interact<br>C photograph · Right mouse viewfinder · F light<br>J journal · R inspect print · Escape pause</p><a href="./">BACK TO STORIES</a></div>';
 document.body.append(launch);
 $("#loading").hidden = true;
 $("#enter-story").onclick = () => {

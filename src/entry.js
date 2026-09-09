@@ -39,7 +39,7 @@ else {
     });
     document.querySelector("#menu-location").textContent =
       id === "cinema"
-        ? "BELLWETHER CINEMA / NOVEMBER 1998"
+        ? "BELLWETHER CINEMA / DECEMBER 1998"
         : "BLACKWOOD HOUSE / OCTOBER 1997";
   }
   screen.querySelectorAll("[data-chapter]").forEach((row) => {

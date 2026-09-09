@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { discoveredLore, LORE } from "../src/cinema/lore.js";
 import {
   newStory,
   restoreStory,
@@ -22,6 +23,22 @@ test("cinema saves are versioned and independent of Blackwood", () => {
   assert.equal(b.photos.length, 0);
   assert.equal(restoreStory({ version: 2 }), null);
   assert.deepEqual(restoreStory(a).checkpoint, a.checkpoint);
+});
+test("optional lore survives old saves without changing puzzle progression", () => {
+  const old = newStory();
+  delete old.lore;
+  old.items.coat = true;
+  old.items.records = true;
+  old.tasks.belongings = true;
+  const restored = restoreStory(old);
+  assert.deepEqual(discoveredLore(restored), ["coat", "belongings", "records"]);
+  const before = objective(restored);
+  for (const id of Object.keys(LORE)) restored.lore[id] = true;
+  assert.equal(objective(restored), before);
+  assert.equal(investigationComplete(restored), false);
+  const saved = restoreStory(JSON.parse(JSON.stringify(restored)));
+  assert.equal(discoveredLore(saved).length, Object.keys(LORE).length);
+  assert.deepEqual(newStory().lore, {});
 });
 test("pause freezes projector and threat, including exhausted reels", () => {
   const s = newStory();
