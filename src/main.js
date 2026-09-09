@@ -24,8 +24,8 @@ import {
 const $ = (id) => document.getElementById(id),
   canvas = $("world"),
   scene = new THREE.Scene();
-scene.background = new THREE.Color("#08120e");
-scene.fog = new THREE.FogExp2("#13251c", 0.029);
+scene.background = new THREE.Color("#100e0c");
+scene.fog = new THREE.FogExp2("#221c17", 0.021);
 let renderer;
 try {
   renderer = createRenderer(canvas);
@@ -60,15 +60,15 @@ const weaponScene = new THREE.Scene(),
     4,
   );
 weaponScene.add(weaponCamera);
-weaponScene.add(new THREE.HemisphereLight(0xb6c6ac, 0x151c14, 1.2));
-const weaponLamp = new THREE.DirectionalLight(0xd0dfb9, 1.2);
+weaponScene.add(new THREE.HemisphereLight(0xd9cdbb, 0x211a15, 1.2));
+const weaponLamp = new THREE.DirectionalLight(0xeee0c8, 1.2);
 weaponLamp.position.set(-1, 2, 1);
 weaponScene.add(weaponLamp);
 const cameraModel = world.makeCamera(weaponCamera);
 cameraModel.scale.setScalar(0.72);
 cameraModel.visible = false;
 const flashlight = new THREE.SpotLight(
-  0xe4eed0,
+  0xf4ecdd,
   32,
   18,
   Math.PI * 0.24,
@@ -81,9 +81,9 @@ flashlight.shadow.bias = -0.0004;
 flashlight.shadow.normalBias = 0.04;
 flashlight.shadow.camera.near = 0.2;
 scene.add(flashlight, flashlight.target);
-const fillLight = new THREE.PointLight(0xd9e5bc, 1.2, 3, 2);
+const fillLight = new THREE.PointLight(0xe9d9c5, 1.2, 3, 2);
 scene.add(fillLight);
-const flashLight = new THREE.PointLight(0xe4f2dc, 0, 19, 1.5);
+const flashLight = new THREE.PointLight(0xf1f0e9, 0, 19, 1.5);
 scene.add(flashLight);
 const audio = new Soundscape(),
   SAVE = "polaroid.save.v1",
@@ -453,7 +453,7 @@ function openCredits() {
     "credits",
     panel(
       "STILL / HERE",
-      `<p>An interactive ghost story about the things we choose to remember.</p><p class="small">POLAROID<br>Original game, environments, procedural materials & synthesized spatial sound.<br>Camera shutter and footsteps — supplied recordings.<br><br>3D rendering — Three.js (MIT)<br>Built with Vite (MIT)<br><br>Visual direction inspired by your reference: damp green walls, exposed utility pipes, exhausted fluorescent light.<br><br>A fictional story. No affiliation with Polaroid Corporation.</p><button id="credits-play" class="filled-button">ENTER THE HOUSE ↗</button>`,
+      `<p>An interactive ghost story about the things we choose to remember.</p><p class="small">POLAROID<br>Original game, environments, procedural materials & synthesized spatial sound.<br>Camera shutter and footsteps — supplied recordings.<br><br>3D rendering — Three.js (MIT)<br>Built with Vite (MIT)<br><br>Blackwood House: faded wallpaper, aged timber, warm opal lamps and the traces of a family home.<br><br>A fictional story. No affiliation with Polaroid Corporation.</p><button id="credits-play" class="filled-button">ENTER THE HOUSE ↗</button>`,
     ),
   );
   $("credits-play").onclick = () => startGame();

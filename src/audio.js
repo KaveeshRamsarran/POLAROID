@@ -4,7 +4,7 @@ import footstepUrl from "./sfx/footstep-concrete.mp3";
 
 export function footSurface(x, z) {
   const room = regionAt(x, z);
-  if (room?.ramp) return "metal";
+  if (room?.ramp) return room.ramp === "down" ? "metal" : "wood";
   if (tiledRooms.includes(room?.name)) return "tile";
   if (room?.y > 0 || boardedRooms.includes(room?.name)) return "wood";
   return "concrete";

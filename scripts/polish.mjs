@@ -12,7 +12,9 @@ const errors = [];
 page.on("pageerror", (e) => errors.push(e.message));
 await fs.mkdir("artifacts", { recursive: true });
 try {
-  await page.goto((process.argv[2] || "http://127.0.0.1:3000") + "?chapter=blackwood");
+  await page.goto(
+    (process.argv[2] || "http://127.0.0.1:3000") + "?chapter=blackwood",
+  );
   await page.locator("#loading").waitFor({ state: "hidden" });
   const geometry = await page.evaluate(async () => {
     const { THREE } = await import("/scripts/polish-fixture.js");
@@ -75,6 +77,35 @@ try {
       door.open = door.target = 1;
       door.pivot.rotation.y = -Math.PI * 0.49;
     }
+    scene.updateMatrixWorld(true);
+    // A clear collision route is not enough: decorative trim must also leave
+    // the doorway visibly open at knee and eye height, from both approaches.
+    const coveredDoors = [];
+    for (const door of world.doors)
+      for (const height of [0.6, 1.6])
+        for (const side of [-1, 1]) {
+          const origin = door.group.localToWorld(
+            new THREE.Vector3(0, height, side * 0.65),
+          );
+          const direction = new THREE.Vector3(0, 0, -side).transformDirection(
+            door.group.matrixWorld,
+          );
+          const hit = new THREE.Raycaster(origin, direction, 0.01, 1.3)
+            .intersectObjects(scene.children, true)
+            .find(({ object }) => {
+              if (!object.isMesh) return false; // Dust and rain are not door coverings.
+              for (let parent = object; parent; parent = parent.parent)
+                if (!parent.visible) return false;
+              return true;
+            });
+          if (hit)
+            coveredDoors.push({
+              label: door.label,
+              height,
+              side,
+              distance: hit.distance,
+            });
+        }
     const stairObstructions = [];
     for (let z = -17.1; z > -35; z -= 0.1)
       if (blocked(0, z, world.solids, 0.23)) stairObstructions.push(z);
@@ -93,14 +124,18 @@ try {
     const camera = new THREE.PerspectiveCamera(65, 1280 / 800, 0.05, 100);
     const lamp = new THREE.PointLight(0xd6e2d0, 24, 12, 2);
     scene.add(lamp);
-    scene.background = new THREE.Color("#08120e");
-    scene.fog = new THREE.FogExp2("#13251c", 0.025);
+    scene.background = new THREE.Color("#100e0c");
+    scene.fog = new THREE.FogExp2("#221c17", 0.021);
     window.reviewPolish = (view) => {
       world.observer.visible = view === "observer";
       const views = {
         attic: [0, 8.1, -34.2, 0, 7.5, -29],
         chairs: [8.4, 1.9, 2.7, 5.9, 0.6, -0.6],
         observer: [0, 1.65, 10.2, 0, 1.5, 7],
+        hall: [0.65, 1.65, 12.3, -0.2, 1.7, 1],
+        living: [-3.8, 1.7, 7, -8.7, 1.2, 10.5],
+        stairs: [0.4, 2.7, -18.6, -0.4, 4.1, -24],
+        nursery: [-3.8, 5.25, -25, -8.4, 4.5, -23],
       };
       const [x, y, z, tx, ty, tz] = views[view];
       camera.position.set(x, y, z);
@@ -111,7 +146,14 @@ try {
       world.update(0.016, 4, camera.position, true, 0);
       renderer.render(scene, camera);
     };
-    return { chairs, overlaps, rays, stairObstructions, closedDoorBypasses };
+    return {
+      chairs,
+      overlaps,
+      rays,
+      stairObstructions,
+      closedDoorBypasses,
+      coveredDoors,
+    };
   });
   assert.equal(geometry.chairs.length, 15);
   assert.ok(
@@ -137,8 +179,21 @@ try {
     [],
     "Door frames close the sides of locked doors",
   );
+  assert.deepEqual(
+    geometry.coveredDoors,
+    [],
+    "Open doors remain visually clear above and below the dado rail",
+  );
   console.log("ARCHITECTURE", JSON.stringify(geometry));
-  for (const view of ["attic", "chairs", "observer"]) {
+  for (const view of [
+    "attic",
+    "chairs",
+    "observer",
+    "hall",
+    "living",
+    "stairs",
+    "nursery",
+  ]) {
     await page.evaluate((view) => window.reviewPolish(view), view);
     await page
       .locator("#polish-review")
@@ -195,7 +250,7 @@ try {
   });
   assert.equal(audio.idle.rms, 0, "Idle soundscape is silent");
   assert.equal(audio.idle.peak, 0, "Idle soundscape is exactly silent");
-  assert.deepEqual(audio.surfaces, ["metal", "tile", "wood", "concrete"]);
+  assert.deepEqual(audio.surfaces, ["wood", "tile", "wood", "wood"]);
   assert.ok(audio.idle.recorded, "Supplied shutter and walk recordings decode");
   assert.ok(
     audio.idle.footfalls >= 4,

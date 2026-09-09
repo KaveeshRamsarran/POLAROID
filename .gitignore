@@ -7,6 +7,11 @@ artifacts/*
 !artifacts/polish-attic.png
 !artifacts/polish-chairs.png
 !artifacts/polish-observer.png
+!artifacts/polish-hall.png
+!artifacts/polish-living.png
+!artifacts/polish-stairs.png
+!artifacts/polish-nursery.png
+!artifacts/blackwood-home.png
 !artifacts/hand-viewfinder.png
 !artifacts/hand-detail.png
 !artifacts/gait-65.png

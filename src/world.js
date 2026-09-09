@@ -14,6 +14,7 @@ import {
 } from "./logic.js";
 
 import { createSurface, repeatMaterial, surfaceKinds } from "./materials.js";
+import { createHouseFinishes, createHousePicture } from "./house-finishes.js";
 
 const rnd = seededRandom(971017);
 export function buildWorld(scene) {
@@ -41,13 +42,13 @@ export function buildWorld(scene) {
     return materialCache.get(key);
   };
   const mats = {
-    wall: material("#b8c2b8"),
-    tile: material("#a9b39d", 0.68),
-    concrete: material("#9ca68e", 0.8),
-    wood: material("#c1ad85"),
-    metal: material("#859785", 0.6, 0.65),
-    fabric: material("#8a9071"),
-    dark: material("#19251d"),
+    wall: material("#dbcdb5"),
+    tile: material("#e4d9bf", 0.68),
+    concrete: material("#b7afa0", 0.8),
+    wood: material("#eee0cb"),
+    metal: material("#aca496", 0.6, 0.65),
+    fabric: material("#9b786e"),
+    dark: material("#241e19"),
     rust: material("#603b29", 0.9, 0.4),
     paper: material("#b9b697"),
     ivory: material("#bfc3a8"),
@@ -63,6 +64,10 @@ export function buildWorld(scene) {
     mats[k].roughness = 1;
     mats[k].normalScale.setScalar(k === "wall" ? 0.55 : 0.7);
   }
+  const house = createHouseFinishes();
+  // Keep shared camera/character materials and cinema surfaces independent.
+  Object.assign(mats, house);
+  mats.wall = house.plaster;
   const boxGeo = new THREE.BoxGeometry(1, 1, 1),
     sphereGeo = new THREE.SphereGeometry(1, 18, 14),
     roundedCache = new Map();
@@ -168,12 +173,10 @@ export function buildWorld(scene) {
   }
   const wallMaterials = new Map();
   function wallSegment(x, z, w, d, y = 0, h = 3.25) {
-    const key = `${Math.max(w, d).toFixed(2)},${h.toFixed(2)}`;
+    const finish = y < 0 || y >= 6.8 ? mats.plaster : mats.wallpaper;
+    const key = `${finish.uuid},${Math.max(w, d).toFixed(2)},${h.toFixed(2)}`;
     if (!wallMaterials.has(key)) {
-      wallMaterials.set(
-        key,
-        repeatMaterial(mats.wall, Math.max(w, d) / 3, h / 3),
-      );
+      wallMaterials.set(key, repeatMaterial(finish, Math.max(w, d) / 2, h / 2));
     }
     box(w, h, d, x, y + h / 2, z, wallMaterials.get(key));
     // Trim protrudes along the wall thickness, whichever axis the wall follows.
@@ -185,7 +188,7 @@ export function buildWorld(scene) {
       x,
       y + 0.07,
       z,
-      mats.dark,
+      mats.joinery,
     );
     box(
       w + (alongX ? 0 : 0.025),
@@ -194,26 +197,78 @@ export function buildWorld(scene) {
       x,
       y + 1.08,
       z,
-      mats.metal,
+      mats.trim,
     );
+    // Wainscot and stepped cornice follow each solid segment, stopping at every
+    // doorway. They never form a decorative barrier across an opening.
+    if (y >= 0 && y < 6.8) {
+      box(
+        w + (alongX ? 0 : 0.028),
+        0.86,
+        d + (alongX ? 0.028 : 0),
+        x,
+        y + 0.57,
+        z,
+        mats.joinery,
+      );
+      for (const [drop, height, depth] of [
+        [0.09, 0.12, 0.08],
+        [0.19, 0.045, 0.045],
+      ])
+        box(
+          w + (alongX ? 0 : depth),
+          height,
+          d + (alongX ? depth : 0),
+          x,
+          y + h - drop,
+          z,
+          mats.trim,
+        );
+      const length = alongX ? w : d;
+      const count = Math.floor(length / 0.8);
+      for (let i = 1; i < count; i++) {
+        const offset = -length / 2 + (i * length) / count;
+        box(
+          alongX ? 0.035 : w + 0.045,
+          0.84,
+          alongX ? d + 0.045 : 0.035,
+          x + (alongX ? offset : 0),
+          y + 0.57,
+          z + (alongX ? 0 : offset),
+          mats.joinery,
+        );
+      }
+    }
     architecture.push({ type: "wall", x, z, w, d, y, h });
     solid(x, z, w, d, undefined, y, h);
   }
   // Openings are always 2.25 m tall; the lintel takes up whatever is left, so a
   // storey can be shortened where another storey's wall sits directly above it.
+  function lintel(x, z, w, d, y, h) {
+    const finish = y < 0 || y >= 6.8 ? mats.plaster : mats.wallpaper;
+    const mat = repeatMaterial(finish, Math.max(w, d) / 2, (h - 2.25) / 2);
+    mat.map.offset.y = 2.25 / 2;
+    box(w, h - 2.25, d, x, y + (h + 2.25) / 2, z, mat);
+    if (y >= 0 && y < 6.8)
+      for (const [drop, height, depth] of [
+        [0.09, 0.12, 0.08],
+        [0.19, 0.045, 0.045],
+      ])
+        box(
+          w + (w > d ? 0 : depth),
+          height,
+          d + (w > d ? depth : 0),
+          x,
+          y + h - drop,
+          z,
+          mats.trim,
+        );
+  }
   function wallX(z, a, b, y = 0, gaps = [], h = 3.25) {
     let p = a;
     for (const [g1, g2] of gaps) {
       if (g1 > p) wallSegment((p + g1) / 2, z, g1 - p, 0.2, y, h);
-      box(
-        g2 - g1,
-        h - 2.25,
-        0.2,
-        (g1 + g2) / 2,
-        y + (h + 2.25) / 2,
-        z,
-        mats.wall,
-      );
+      lintel((g1 + g2) / 2, z, g2 - g1, 0.2, y, h);
       p = g2;
     }
     if (p < b) wallSegment((p + b) / 2, z, b - p, 0.2, y, h);
@@ -222,15 +277,7 @@ export function buildWorld(scene) {
     let p = a;
     for (const [g1, g2] of gaps) {
       if (g1 > p) wallSegment(x, (p + g1) / 2, 0.2, g1 - p, y, h);
-      box(
-        0.2,
-        h - 2.25,
-        g2 - g1,
-        x,
-        y + (h + 2.25) / 2,
-        (g1 + g2) / 2,
-        mats.wall,
-      );
+      lintel(x, (g1 + g2) / 2, 0.2, g2 - g1, y, h);
       p = g2;
     }
     if (p < b) wallSegment(x, (p + b) / 2, 0.2, b - p, y, h);
@@ -268,7 +315,7 @@ export function buildWorld(scene) {
         (r.x1 + r.x2) / 2,
         r.y + 3.26,
         (r.z1 + r.z2) / 2,
-        mats.dark,
+        r.y < 0 ? mats.concrete : mats.plaster,
       );
   }
   // Openings are sized to their leaf: a 1.05 m door needs a 1.25 m reveal.
@@ -330,9 +377,17 @@ export function buildWorld(scene) {
           x,
           y - 0.1,
           z - ((i + 0.5) * length) / n,
-          mats.concrete,
+          mats.wood,
         );
-        box(width, 0.024, 0.05, x, y + 0.01, z - (i * length) / n, mats.metal);
+        box(
+          width,
+          0.024,
+          0.05,
+          x,
+          y + 0.01,
+          z - (i * length) / n,
+          mats.joinery,
+        );
       } else {
         box(
           length / n + 0.015,
@@ -352,22 +407,22 @@ export function buildWorld(scene) {
           [x + side * (width / 2 - 0.18), start + 1, z],
           [x + side * (width / 2 - 0.18), start + rise + 1, z - length],
           0.045,
-          mats.metal,
+          mats.joinery,
         );
-        for (let i = 0; i <= 5; i++)
+        for (let i = 0; i <= 18; i++)
           link(
             [
               x + side * (width / 2 - 0.18),
-              start + (rise * i) / 5,
-              z - (length * i) / 5,
+              start + (rise * i) / 18,
+              z - (length * i) / 18,
             ],
             [
               x + side * (width / 2 - 0.18),
-              start + (rise * i) / 5 + 1,
-              z - (length * i) / 5,
+              start + (rise * i) / 18 + 1,
+              z - (length * i) / 18,
             ],
             0.025,
-            mats.metal,
+            mats.trim,
           );
       }
     }
@@ -381,7 +436,7 @@ export function buildWorld(scene) {
     [-29, 3.6, 3.2],
   ]) {
     for (const x of [-2.2, 2.2]) wallSegment(x, z - 3, 0.2, 6, y, rise + 3.25);
-    box(4.4, 0.12, 6, 0, y + rise + 3.26, z - 3, mats.dark);
+    box(4.4, 0.12, 6, 0, y + rise + 3.26, z - 3, mats.plaster);
     // Close the view above the lower roof, leaving the lower doorway clear.
     const h = rise + 0.07;
     box(
@@ -424,43 +479,67 @@ export function buildWorld(scene) {
     const pivot = new THREE.Group();
     pivot.position.x = -width / 2;
     g.add(pivot);
-    round(width, 2.22, 0.105, width / 2, 1.11, 0, mats.metal, pivot, 0.025);
-    round(
-      width - 0.16,
-      1.18,
-      0.04,
-      width / 2,
-      1.33,
-      0.063,
-      mats.wall,
-      pivot,
-      0.015,
-    );
-    box(width - 0.14, 0.48, 0.05, width / 2, 0.4, 0.067, mats.dark, pivot);
-    for (let i = 0; i < 5; i++)
-      box(
-        width - 0.24,
+    round(width, 2.22, 0.105, width / 2, 1.11, 0, mats.joinery, pivot, 0.012);
+    for (const side of [-1, 1]) {
+      for (const [py, ph] of [
+        [0.52, 0.66],
+        [1.53, 1.04],
+      ]) {
+        for (const px of [width * 0.28, width * 0.72]) {
+          const pw = width * 0.34;
+          round(pw, ph, 0.025, px, py, side * 0.06, mats.wood, pivot, 0.01);
+          round(
+            pw - 0.055,
+            ph - 0.065,
+            0.02,
+            px,
+            py,
+            side * 0.075,
+            mats.joinery,
+            pivot,
+            0.012,
+          );
+        }
+      }
+      round(
+        0.065,
+        0.24,
         0.025,
-        0.025,
-        width / 2,
-        0.23 + i * 0.07,
-        0.1,
-        mats.metal,
+        width - 0.14,
+        1.04,
+        side * 0.067,
+        mats.brass,
+        pivot,
+        0.015,
+      );
+      ball(
+        0.045,
+        0.045,
+        0.035,
+        width - 0.14,
+        1.07,
+        side * 0.113,
+        mats.brass,
         pivot,
       );
-    cylinder(
-      0.032,
-      0.22,
-      width - 0.16,
-      1.05,
-      0.11,
-      mats.rust,
-      pivot,
-    ).rotation.z = Math.PI / 2;
+      box(
+        0.016,
+        0.036,
+        0.004,
+        width - 0.14,
+        0.975,
+        side * 0.082,
+        mats.dark,
+        pivot,
+      );
+      for (const py of [0.3, 1.91])
+        cylinder(0.018, 0.12, 0.015, py, side * 0.065, mats.brass, pivot);
+    }
     // The casing laps onto the reveal so a narrow leaf leaves no open slot.
     for (const sx of [-width / 2 - 0.09, width / 2 + 0.09])
-      box(0.19, 2.36, 0.19, sx, 1.18, 0, mats.rust, g);
-    box(width + 0.38, 0.1, 0.19, 0, 2.36, 0, mats.rust, g);
+      box(0.19, 2.36, 0.19, sx, 1.18, 0, mats.trim, g);
+    box(width + 0.38, 0.1, 0.19, 0, 2.36, 0, mats.trim, g);
+    box(width + 0.43, 0.055, 0.23, 0, 2.425, 0, mats.trim, g);
     const d = {
       group: g,
       pivot,
@@ -512,24 +591,70 @@ export function buildWorld(scene) {
   const frontDoor = door(0, 14, Math.PI, "FRONT ENTRANCE", 0, "exit", HEAVY);
   door(16, -14, -Math.PI / 2, "CELLAR", -3.6, "basement", HEAVY);
   function fixture(x, y, z, w = 1.5, warm = false) {
-    box(w + 0.12, 0.12, 0.4, x, y, z, mats.metal);
+    const base = floorAt(x, z) ?? 0;
+    const ceiling = z > 14 ? 3.07 : base + 3.2;
+    const utility = base < 0;
+    const radius = utility ? 0.14 : 0.18 + w * 0.095;
+    const bulbY = Math.min(y - 0.3, ceiling - 0.42);
+    cylinder(radius * 0.7, 0.035, x, ceiling - 0.015, z, mats.trim);
+    cylinder(radius * 0.45, 0.05, x, ceiling - 0.054, z, mats.brass);
+    link([x, ceiling - 0.07, z], [x, bulbY + 0.12, z], 0.016, mats.dark);
     const glow = new THREE.MeshStandardMaterial({
-      color: warm ? "#c89d61" : "#c4e1bc",
-      emissive: warm ? "#ddb37b" : "#d3f4cc",
-      emissiveIntensity: 2.7,
+      color: "#ede0c3",
+      emissive: utility ? "#d7d3b9" : "#ffcf91",
+      emissiveIntensity: 1.35,
     });
-    for (const dz of [-0.115, 0.115]) {
-      const tube = cylinder(0.035, w, x, y - 0.085, z + dz, glow);
-      tube.rotation.z = Math.PI / 2;
+    cylinder(0.055, 0.11, x, bulbY + 0.14, z, mats.brass);
+    if (utility) ball(0.075, 0.11, 0.075, x, bulbY, z, glow);
+    else {
+      // Opaque opal bowl, brass lip and central finial: attached to the plaster
+      // ceiling rather than suspended at the former fluorescent coordinates.
+      const bowl = mesh(
+        new THREE.SphereGeometry(
+          radius,
+          32,
+          16,
+          0,
+          Math.PI * 2,
+          Math.PI / 2,
+          Math.PI / 2,
+        ),
+        glow,
+        x,
+        bulbY + 0.07,
+        z,
+      );
+      bowl.scale.y = 0.58;
+      const lip = mesh(
+        new THREE.TorusGeometry(radius, 0.012, 8, 32),
+        mats.brass,
+        x,
+        bulbY + 0.07,
+        z,
+      );
+      lip.rotation.x = Math.PI / 2;
+      ball(0.027, 0.04, 0.027, x, bulbY - radius * 0.58, z, mats.brass);
+      for (let i = 0; i < 3; i++) {
+        const angle = (i * Math.PI * 2) / 3;
+        link(
+          [x, bulbY + 0.19, z],
+          [
+            x + Math.cos(angle) * radius,
+            bulbY + 0.08,
+            z + Math.sin(angle) * radius,
+          ],
+          0.008,
+          mats.brass,
+        );
+      }
     }
-    for (const dx of [-w / 2, w / 2])
-      box(0.04, 0.15, 0.43, x + dx, y - 0.035, z, mats.dark);
+    architecture.push({ type: "pendant", x, z, ceiling, base, bulbY });
     fixtures.push({
       x,
-      y: y - 0.25,
+      y: bulbY - 0.15,
       z,
-      color: warm ? 0xffc38a : 0xb9eac7,
-      power: warm ? 15 : 25,
+      color: utility ? 0xddd4bb : warm ? 0xffd09b : 0xffdfb4,
+      power: utility ? 18 : 21,
       glow,
     });
   }
@@ -553,38 +678,6 @@ export function buildWorld(scene) {
   fixture(-6.4, 6.6, -32, 1.1, true);
   fixture(6, 6.6, -32, 1.2);
   fixture(22, -0.6, -26, 1.2);
-  for (const x of [-0.9, -0.48, 0.48, 0.9]) {
-    link(
-      [x, 2.88, 13.7],
-      [x, 2.88, -16.8],
-      x === -0.48 ? 0.13 : 0.085,
-      mats.metal,
-    );
-    for (let z = -16; z < 14; z += 1.9) {
-      const ring = mesh(
-        new THREE.TorusGeometry(x === -0.48 ? 0.138 : 0.09, 0.018, 6, 16),
-        mats.dark,
-        x,
-        2.88,
-        z,
-      );
-      ring.rotation.y = 0;
-    }
-  }
-  for (const z of [-13, -5, 3, 11])
-    box(3.6, 0.055, 0.08, 0, 2.77, z, mats.rust);
-  function vent(x, y, z, rot = 0) {
-    const g = new THREE.Group();
-    g.position.set(x, y, z);
-    g.rotation.y = rot;
-    scene.add(g);
-    box(1.6, 0.65, 0.08, 0, 0, 0, mats.dark, g);
-    for (let i = 0; i < 9; i++)
-      box(1.5, 0.034, 0.1, 0, -0.27 + i * 0.068, 0.055, mats.metal, g);
-  }
-  vent(0, 2.4, -16.88);
-  vent(-2.07, 2.5, 5, Math.PI / 2);
-  vent(2.07, 2.5, -8, -Math.PI / 2);
   function cabinet(x, z, y = 0, rot = 0, hide = false) {
     const g = new THREE.Group();
     g.position.set(x, y, z);
@@ -744,7 +837,7 @@ export function buildWorld(scene) {
     fixtures.push({ x, y: y + 0.4, z, color: 0xffba79, power: 8 });
   }
   function rug(x, z, w, d, y = 0) {
-    const m = round(w, 0.018, d, x, y + 0.016, z, mats.fabric, scene, 0.008);
+    const m = round(w, 0.018, d, x, y + 0.016, z, mats.rug, scene, 0.008);
     for (const a of [-1, 1])
       box(
         w - 0.15,
@@ -916,19 +1009,15 @@ export function buildWorld(scene) {
     const g = furniture(x, z, y, rot);
     round(w, h, 0.06, 0, 0, 0, mats.wood, g, 0.015);
     round(w - 0.13, h - 0.13, 0.02, 0, 0, 0.035, mats.dark, g, 0.008);
-    sign(
-      text,
+    mesh(
+      new THREE.PlaneGeometry(w - 0.17, h - 0.17),
+      new THREE.MeshStandardMaterial({
+        map: createHousePicture(text),
+        roughness: 0.93,
+      }),
       0,
       0,
       0.05,
-      w - 0.17,
-      h - 0.17,
-      0,
-      {
-        bg: "#1b2a20",
-        fg: "#96a888",
-        size: 30,
-      },
       g,
     );
     return g;
@@ -1014,6 +1103,18 @@ export function buildWorld(scene) {
     g.position.set(x, y + 1.7, z);
     g.rotation.y = rot;
     scene.add(g);
+    link([-1.49, 1.12, 0.22], [1.49, 1.12, 0.22], 0.025, mats.brass, g);
+    for (const side of [-1, 1]) {
+      ball(0.045, 0.045, 0.045, side * 1.53, 1.12, 0.22, mats.wood, g);
+      link(
+        [side * 1.4, 1.12, 0],
+        [side * 1.4, 1.12, 0.22],
+        0.022,
+        mats.brass,
+        g,
+      );
+    }
+    round(2.18, 0.065, 0.26, 0, -0.94, 0.09, mats.trim, g, 0.012);
     box(2, 1.8, 0.04, 0, 0, 0, mats.dark, g);
     const glass = new THREE.MeshStandardMaterial({
       color: "#405963",
@@ -1529,35 +1630,77 @@ export function buildWorld(scene) {
     position: new THREE.Vector3(22, -2.6, -15),
     label: "Complete the ritual",
   });
-  // Environmental signposting, floor grime, conduits and fuse boxes.
-  sign(
-    "← STUDY     DINING →\nNURSERY / ATTIC ↑",
-    0,
-    2.45,
-    -16.83,
-    2.8,
-    0.37,
-    0,
-    { size: 28 },
+  // A family entrance hall: furnishings hug the solid wall stretches, leaving
+  // the central escape route, every door and Mara's original note accessible.
+  for (const [z, length] of [
+    [8.5, 7.5],
+    [-1.5, 8.5],
+    [-11.4, 7],
+  ])
+    rug(0, z, 1.72, length);
+  sideboard(-1.79, 6, Math.PI / 2, 0, 1.45);
+  lamp(-1.79, 0.98, 6.35);
+  const letters = paper(-1.68, 0.99, 5.75, "MARA\nBLACKWOOD HOUSE");
+  letters.rotation.z = 0.15;
+  pictureFrame(-2.055, 1.95, 5.8, Math.PI / 2, "THE ORCHARD · 1961", 1.05, 0.8);
+  pictureFrame(
+    2.055,
+    1.94,
+    5.6,
+    -Math.PI / 2,
+    "SUMMER AT BLACKWOOD",
+    0.82,
+    1.02,
   );
+  pictureFrame(-2.055, 1.92, -5.4, Math.PI / 2, "THE OLD GARDEN", 0.88, 0.7);
+  pictureFrame(
+    2.055,
+    1.94,
+    -6,
+    -Math.PI / 2,
+    "THE ORCHARD IN OCTOBER",
+    0.75,
+    0.95,
+  );
+  pictureFrame(-2.055, 1.92, 12.2, Math.PI / 2, "HOME · 1961", 0.65, 0.82);
+  const bench = furniture(1.78, 3.2, 0, -Math.PI / 2);
+  round(1.38, 0.12, 0.43, 0, 0.49, 0, mats.joinery, bench, 0.03);
+  round(1.18, 0.09, 0.37, 0, 0.58, 0, mats.fabric, bench, 0.045);
+  for (const a of [-0.55, 0.55])
+    for (const b of [-0.14, 0.14])
+      cylinder(0.035, 0.45, a, 0.24, b, mats.joinery, bench);
+  footprint(1.78, 3.2, 1.38, 0.43, 0, 0.63, -Math.PI / 2);
+  const hooks = furniture(2.045, 12, 1.7, -Math.PI / 2);
+  round(0.88, 0.15, 0.07, 0, 0, 0, mats.joinery, hooks, 0.012);
+  for (const a of [-0.3, 0, 0.3]) {
+    link([a, -0.025, 0.05], [a, 0.02, 0.16], 0.018, mats.brass, hooks);
+    ball(0.025, 0.025, 0.025, a, 0.025, 0.16, mats.brass, hooks);
+  }
+  // A stopped pendulum clock, replacing the hall's utility box.
+  const clock = furniture(-2.015, 2.4, 1.92, Math.PI / 2);
+  round(0.44, 0.83, 0.16, 0, 0, 0, mats.joinery, clock, 0.035);
+  round(0.25, 0.27, 0.01, 0, -0.22, 0.087, mats.dark, clock, 0.02);
+  link([0, -0.09, 0.098], [0, -0.27, 0.098], 0.012, mats.brass, clock);
+  ball(0.065, 0.065, 0.012, 0, -0.28, 0.103, mats.brass, clock);
+  const dial = cylinder(0.185, 0.012, 0, 0.16, 0.092, mats.ivory, clock);
+  dial.rotation.x = Math.PI / 2;
+  for (let i = 0; i < 12; i++) {
+    const a = (i * Math.PI) / 6;
+    const tick = box(
+      0.009,
+      0.025,
+      0.005,
+      Math.sin(a) * 0.155,
+      0.16 + Math.cos(a) * 0.155,
+      0.102,
+      mats.dark,
+      clock,
+    );
+    tick.rotation.z = -a;
+  }
+  link([0, 0.16, 0.108], [0.09, 0.2, 0.108], 0.009, mats.dark, clock);
+  link([0, 0.16, 0.11], [-0.04, 0.29, 0.11], 0.006, mats.dark, clock);
   sign("CELLAR →", 9.86, 1.7, -11.5, 1, 0.35, -Math.PI / 2, { size: 40 });
-  sign(
-    "BLACKWOOD\n17 OCTOBER 1997",
-    -2.07,
-    1.55,
-    12.2,
-    0.65,
-    0.7,
-    Math.PI / 2,
-    { bg: "#a7a98d", fg: "#394734", size: 27 },
-  );
-  round(0.48, 0.76, 0.18, -2.02, 1.56, 6, mats.red);
-  sign("FIRE", -1.915, 1.8, 6, 0.24, 0.2, Math.PI / 2, {
-    bg: "#60362a",
-    size: 40,
-  });
-  link([-1.96, 0.2, 6.9], [-1.96, 3.15, 6.9], 0.015, mats.dark);
-  round(0.28, 0.33, 0.12, -2, 1.17, 6.9, mats.ivory);
   for (const z of [-8, 1]) {
     round(0.12, 0.22, 0.04, 2.06, 1.3, z, mats.ivory);
     interactables.push({
@@ -1566,16 +1709,16 @@ export function buildWorld(scene) {
       label: "Light switch",
     });
   }
-  for (let i = 0; i < 100; i++) {
+  for (let i = 0; i < 22; i++) {
     const x = (rnd() - 0.5) * 3.9,
       z = -16 + rnd() * 29,
       y = 0.004;
     const p = mesh(
       new THREE.CircleGeometry(0.05 + rnd() * 0.35, 48),
       new THREE.MeshStandardMaterial({
-        color: "#17281e",
-        roughness: 0.19,
-        metalness: 0.3,
+        color: "#30251d",
+        roughness: 0.88,
+        metalness: 0,
         transparent: true,
         opacity: 0.22,
         depthWrite: false,
@@ -1594,7 +1737,7 @@ export function buildWorld(scene) {
     }
     p.scale.y = 0.4 + rnd();
   }
-  for (let i = 0; i < 25; i++) {
+  for (let i = 0; i < 8; i++) {
     const x = (rnd() - 0.5) * 3.5,
       z = -15 + rnd() * 27;
     paper(x, 0.014, z, i % 2 ? "17 OCT\nDO NOT LOOK" : "BLACKWOOD\nMISSING");
@@ -1742,11 +1885,11 @@ export function buildWorld(scene) {
   const LIVE_LIGHTS = 9,
     lights = [];
   for (let i = 0; i < LIVE_LIGHTS; i++) {
-    const l = new THREE.PointLight(0xbce2c2, 0, 12, 2);
+    const l = new THREE.PointLight(0xffd4a4, 0, 12, 2);
     scene.add(l);
     lights.push(l);
   }
-  const ambient = new THREE.HemisphereLight(0x7e9b91, 0x1a231a, 0.52);
+  const ambient = new THREE.HemisphereLight(0xa1a5ac, 0x302319, 0.52);
   scene.add(ambient);
 
   // The front entrance opens onto a covered porch and wet ground beneath bare trees.
@@ -1895,7 +2038,7 @@ export function buildWorld(scene) {
         const faulty = Math.sin(t * 0.63 + f.x * 2 + f.z) > 0.992;
         const flicker = faulty && Math.sin(t * 43) > 0 ? 0.65 : 1;
         l.intensity = f.power * (power ? flicker : 0.025);
-        if (f.glow) f.glow.emissiveIntensity = power ? 2.7 * flicker : 0.08;
+        if (f.glow) f.glow.emissiveIntensity = power ? 1.35 * flicker : 0.08;
       }
       ambient.intensity = 0.42 + storm * 0.8;
       for (const w of windows) w.emissiveIntensity = 0.6 + storm * 4;

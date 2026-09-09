@@ -59,6 +59,8 @@ export const regions = [
 // the two can never disagree about what the player is standing on.
 export const tiledRooms = ["KITCHEN", "WASHROOM", "LAUNDRY", "BATHROOM"];
 export const boardedRooms = [
+  "ENTRANCE HALL",
+  "STORAGE",
   "LIVING ROOM",
   "STUDY",
   "DINING ROOM",

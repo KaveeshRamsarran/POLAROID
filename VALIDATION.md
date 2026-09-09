@@ -1,5 +1,15 @@
 # Validation
 
+## Blackwood family-home revamp / 9 September 2026
+
+- Replaced the green utility corridor with botanical wallpaper, aged plaster ceilings, timber floors and wainscot, cream cornices, wooden paneled doors, brass hardware, opal pendants and patterned rugs. Removed the overhead pipe runs, fluorescent tubes, ventilation grilles and fire cabinet. The hall now has a sideboard, lamp, letters, bench, coat hooks, a stopped clock and framed landscape artwork. Window curtains have rods and brackets; the upstairs stairs have timber treads and painted balusters.
+- New canvas-authored finishes and decorative pictures live in `src/house-finishes.js`, independent of the cinema. The camera/hand geometry, Observer animation, chapter keys, puzzle gates and existing checkpoints are preserved. Hall, storage and upstairs stair footsteps now match their wooden surfaces.
+- Unit suite: 24 passed. The fixture-assisted Blackwood progression test passed all room connections, actual evidence exposures, attic combination, cellar key, ritual, final photograph and escape. This is automated coverage, not an uninterrupted human playthrough.
+- Architecture/audio review passed: 15 chairs face their tables, no coincident parallel structural walls, both stair enclosures remain closed, stairs stay walkable and locked doors cannot be bypassed. A new mesh-ray regression checks every open door at knee and eye height from both sides, rejecting decorative coverings. Recorded shutter and footsteps decode, idle audio stays silent and crouching remains quieter.
+- Character regression passed: 19 unlettered doors, five modeled hand digits, articulated walking/chasing and no continued footfalls while idle. Production anthology checks passed both launch/continue paths, legacy Blackwood saves, separate photographs, shared settings and chapter teardown.
+- Production chase, death and checkpoint recovery passed with the remodeled house.
+- Visually inspected the actual gameplay entrance hall and isolated renders of the living room, nursery, stairs, door details and attic enclosure. Updated Blackwood's menu photograph only; the cinema artwork is unchanged. Production build passed; the existing Three.js chunk-size advisory remains informational.
+
 ## Bellwether lore and environment expansion / September 2026
 
 - Optional records connect the patron's repaired coat, Thomas Avery's reservation, Ruth's lost property and letter, Ada's shift notes, and the missing witness account. Found records persist separately from photographs; older saves infer already-collected coat and maintenance notes. All original puzzle gates remain unchanged.
