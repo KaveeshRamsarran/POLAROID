@@ -149,3 +149,39 @@ test("shared navigation respects closed doors and swept wall corners", () => {
   doors.room = false;
   assert.equal(nav.blocked(3, 0), true);
 });
+
+test("cached patrol routes refresh when a door locks or its open leaf moves", () => {
+  const doors = { room: false };
+  let unlocked = true;
+  const leaf = {
+    x1: 9,
+    x2: 9.1,
+    z1: -3,
+    z2: 3,
+    y1: 0,
+    y2: 3,
+    door: "room",
+    openLeaf: true,
+  };
+  const nav = createNavigation({
+    solids: [
+      { x1: 1, x2: 1.2, z1: -1, z2: 1, y1: 0, y2: 3 },
+      { x1: 3, x2: 3.1, z1: -3, z2: 3, y1: 0, y2: 3, door: "room" },
+      leaf,
+    ],
+    doors,
+    canOpen: () => unlocked,
+    floorAt: (x, z) => (x > -1 && x < 6 && Math.abs(z) < 3 ? 0 : null),
+  });
+  const start = { x: 0, z: 0 },
+    end = { x: 5, z: 0 };
+  assert(nav.path(start, end).length);
+  assert(nav.path(start, end).length);
+  unlocked = false;
+  assert.equal(nav.path(start, end).length, 0);
+  doors.room = true;
+  assert(nav.path(start, end).length);
+  leaf.x1 = 3;
+  leaf.x2 = 3.1;
+  assert.equal(nav.path(start, end).length, 0);
+});

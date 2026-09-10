@@ -103,17 +103,82 @@ export function createNavigation({
     }
     return true;
   }
+  let topology = "";
+  const edges = new Map();
   function path(a, b) {
     if (clear(a, b, 0.22, true)) return [{ x: b.x, z: b.z }];
+    // Reuse swept grid edges between patrol searches. Door state, permissions
+    // and animated leaf bounds invalidate the cache before it can serve a route.
+    const current = solids
+      .map((s) =>
+        [s.x1, s.x2, s.y1, s.y2, s.z1, s.z2, inactive(s, true)].join(","),
+      )
+      .join(";");
+    if (current !== topology) {
+      topology = current;
+      edges.clear();
+    }
     const step = 0.5,
       key = (x, z) => `${x},${z}`,
       start = { x: Math.round(a.x / step), z: Math.round(a.z / step) },
       goal = { x: Math.round(b.x / step), z: Math.round(b.z / step) };
-    const q = [start],
-      seen = new Map([[key(start.x, start.z), null]]);
+    function gridClear(a, b) {
+      const ak = key(a.x, a.z),
+        bk = key(b.x, b.z);
+      const k = ak < bk ? `${ak}/${bk}` : `${bk}/${ak}`;
+      if (!edges.has(k))
+        edges.set(
+          k,
+          clear(
+            { x: a.x * step, z: a.z * step },
+            { x: b.x * step, z: b.z * step },
+            0.22,
+            true,
+          ),
+        );
+      return edges.get(k);
+    }
+    // A* explores toward the destination instead of flooding the whole motel.
+    // All edges still use the same swept collision checks as player movement.
+    const heap = [],
+      closed = new Set(),
+      seen = new Map([[key(start.x, start.z), null]]),
+      costs = new Map([[key(start.x, start.z), 0]]);
+    const estimate = (n) => Math.hypot(n.x - goal.x, n.z - goal.z);
+    function push(node) {
+      heap.push(node);
+      let i = heap.length - 1;
+      while (i > 0) {
+        const p = (i - 1) >> 1;
+        if (heap[p].score <= node.score) break;
+        heap[i] = heap[p];
+        i = p;
+      }
+      heap[i] = node;
+    }
+    function pop() {
+      const first = heap[0],
+        last = heap.pop();
+      if (heap.length) {
+        let i = 0;
+        while (i * 2 + 1 < heap.length) {
+          let c = i * 2 + 1;
+          if (c + 1 < heap.length && heap[c + 1].score < heap[c].score) c++;
+          if (last.score <= heap[c].score) break;
+          heap[i] = heap[c];
+          i = c;
+        }
+        heap[i] = last;
+      }
+      return first;
+    }
+    push({ ...start, cost: 0, score: estimate(start) });
     let end = null;
-    for (let cursor = 0; cursor < q.length && cursor < 18000; cursor++) {
-      const n = q[cursor];
+    for (let cursor = 0; heap.length && cursor < 18000; cursor++) {
+      const n = pop(),
+        nk = key(n.x, n.z);
+      if (closed.has(nk)) continue;
+      closed.add(nk);
       if (
         Math.hypot(n.x - goal.x, n.z - goal.z) <= 1 &&
         clear({ x: n.x * step, z: n.z * step }, b, 0.22, true)
@@ -132,19 +197,17 @@ export function createNavigation({
         [-1, -1],
       ]) {
         const p = { x: n.x + dx, z: n.z + dz },
-          k = key(p.x, p.z);
+          k = key(p.x, p.z),
+          cost = n.cost + Math.hypot(dx, dz);
         if (
-          seen.has(k) ||
-          !clear(
-            { x: n.x * step, z: n.z * step },
-            { x: p.x * step, z: p.z * step },
-            0.22,
-            true,
-          )
+          closed.has(k) ||
+          (costs.has(k) && costs.get(k) <= cost) ||
+          !gridClear(n, p)
         )
           continue;
         seen.set(k, n);
-        q.push(p);
+        costs.set(k, cost);
+        push({ ...p, cost, score: cost + estimate(p) });
       }
     }
     if (!end) return [];

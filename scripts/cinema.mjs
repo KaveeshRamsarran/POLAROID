@@ -84,7 +84,7 @@ async function photo(id, x, z, patch = {}) {
 }
 try {
   await page.goto(base);
-  assert.equal(await page.locator(".chapter-card").count(), 2);
+  assert.equal(await page.locator(".chapter-card").count(), 3);
   await page.evaluate(() =>
     localStorage.setItem(
       "polaroid.save.v1",

@@ -2,6 +2,7 @@ import { SETTINGS_KEY, readSettings } from "./shared/settings.js";
 import "./style.css";
 import "./anthology.css";
 import "./presentation.css";
+import "./shared/fullscreen.js";
 const chapter = new URLSearchParams(location.search).get("chapter");
 if (chapter === "blackwood") await import("./main.js");
 else if (chapter === "last-showing") await import("./cinema/game.js");

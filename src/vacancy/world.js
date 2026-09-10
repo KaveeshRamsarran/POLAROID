@@ -9,6 +9,9 @@ import { updateObserverAnimation } from "../observer-animation.js";
 import { createNavigation } from "../shared/navigation.js";
 import { seededRandom } from "../logic.js";
 import { floorAt, REGIONS, doorUnlocked } from "./logic.js";
+import { motelFinishes } from "./finishes.js";
+import { batchRigidParts } from "./batching.js";
+import { dressMotel } from "./dressing.js";
 
 export function buildMotel(scene, getState) {
   const rnd = seededRandom(741999),
@@ -44,6 +47,15 @@ export function buildMotel(scene, getState) {
   mats.trim = finishes.trim;
   mats.rug = finishes.rug;
   mats.joinery = finishes.joinery;
+  const motel = motelFinishes();
+  mats.wall = motel.plaster;
+  Object.assign(mats, {
+    carpet: motel.carpet,
+    asphalt: motel.asphalt,
+    siding: motel.siding,
+    poolTile: motel.poolTile,
+    blanket: motel.blanket,
+  });
   const { box, round, ball, cylinder, mesh, link, sign } = modelTools(
     scene,
     mats,
@@ -90,7 +102,11 @@ export function buildMotel(scene, getState) {
       x,
       base + h / 2,
       z,
-      repeatMaterial(mats.wall, Math.max(w, d) / 3, h / 3),
+      repeatMaterial(
+        base > 0 ? motel.wallpaper : mats.wall,
+        Math.max(w, d) / 3,
+        h / 3,
+      ),
     );
     box(
       w + (w > d ? 0 : 0.03),
@@ -298,7 +314,7 @@ export function buildMotel(scene, getState) {
         z,
         repeatMaterial(
           r.name.startsWith("Room")
-            ? mats.fabric
+            ? mats.carpet
             : r.name === "Laundry"
               ? mats.tile
               : mats.concrete,
@@ -315,7 +331,7 @@ export function buildMotel(scene, getState) {
     [6, -2.85, 8.6, 6.3],
     [6, 14.4, 8.6, 11.2],
   ])
-    box(w, 0.16, d, x, -0.08, z, repeatMaterial(mats.concrete, w / 3, d / 3));
+    box(w, 0.16, d, x, -0.08, z, repeatMaterial(mats.asphalt, w / 3, d / 3));
   wall(-14, 9.5, 0.2, 9);
   wall(-10, 14, 8, 0.2);
   wallWithDoor("reception", -6, 10, 1.35, Math.PI / 2, 0, 8, "RECEPTION");
@@ -355,7 +371,7 @@ export function buildMotel(scene, getState) {
   wall(4, -9, 20, 0.24, 0, 3.1);
   // Closed ground-floor rooms give the lodge a believable two-storey frontage.
   // Their solid wall sits beneath the balcony and cannot cut its upper route.
-  solid(17, 3.02, 0.2, 5.5, 1.51, -6.25, mats.wall);
+  solid(17, 3.02, 0.2, 5.5, 1.51, -6.25, repeatMaterial(mats.siding, 5.6, 1));
   for (const [number, x] of [
     [1, -1.7],
     [2, 2.6],
@@ -452,8 +468,9 @@ export function buildMotel(scene, getState) {
   const waterless = new THREE.MeshStandardMaterial({
     color: "#405f5d",
     roughness: 0.91,
-    map: mats.tile.map,
-    normalMap: mats.tile.normalMap,
+    map: mats.poolTile.map,
+    bumpMap: mats.poolTile.map,
+    bumpScale: 0.012,
   });
   box(8, 0.08, 8, 6, -1, 4.5, waterless);
   for (const x of [2, 10]) box(0.12, 1.2, 8, x, -0.4, 4.5, waterless);
@@ -472,6 +489,9 @@ export function buildMotel(scene, getState) {
     fg: "#293832",
     size: 35,
   });
+  // The safety notice is attached to a post, not suspended over the pool.
+  box(0.09, 1.85, 0.09, 10.3, 0.925, 7, mats.joinery);
+  box(0.08, 0.7, 1.25, 10.31, 1.5, 7, mats.joinery);
   const keyMemory = groupAt(6, 0.56, 0.2);
   round(0.6, 0.07, 0.42, 0, 0, 0, mats.red, keyMemory, 0.02);
   sign(
@@ -658,7 +678,22 @@ export function buildMotel(scene, getState) {
   function bed(x, z) {
     solid(2, 0.45, 2.25, x, 3.325, z, mats.joinery);
     round(1.96, 0.24, 2.18, x, 3.66, z, mats.ivory);
-    round(1.98, 0.13, 1.4, x, 3.79, z + 0.27, mats.fabric);
+    round(1.98, 0.13, 1.4, x, 3.79, z + 0.27, mats.blanket);
+    // Hanging sides, hem, creases and a folded cover soften the slab silhouette.
+    for (const side of [-1, 1]) {
+      round(
+        0.055,
+        0.3,
+        1.42,
+        x + side * 0.98,
+        3.67,
+        z + 0.27,
+        mats.blanket,
+        scene,
+        0.015,
+      );
+    }
+    round(1.96, 0.06, 0.22, x, 3.86, z - 0.38, mats.ivory, scene, 0.024);
     round(0.72, 0.14, 0.43, x - 0.48, 3.83, z - 0.73, mats.paper);
     round(0.72, 0.14, 0.43, x + 0.48, 3.83, z - 0.73, mats.paper);
     round(2.16, 0.9, 0.13, x, 3.95, z - 1.14, mats.joinery);
@@ -667,20 +702,30 @@ export function buildMotel(scene, getState) {
   bed(-3.5, -13.55);
   bed(11, -13.55);
   for (const x of [-1, 6.7, 12.8]) {
-    solid(0.6, 0.65, 0.65, x, 3.425, -13.7, mats.joinery);
-    cylinder(0.13, 0.03, x, 3.79, -13.7, mats.brass);
-    cylinder(0.018, 0.31, x, 3.95, -13.7, mats.brass);
+    solid(
+      x === 6.7 ? 1.05 : 0.6,
+      0.65,
+      x === 6.7 ? 0.85 : 0.65,
+      x,
+      3.425,
+      -13.7,
+      mats.joinery,
+    );
+    const lx = x === 6.7 ? x + 0.23 : x,
+      lz = x === 6.7 ? -13.9 : -13.7;
+    cylinder(0.13, 0.03, lx, 3.79, lz, mats.brass);
+    cylinder(0.018, 0.31, lx, 3.95, lz, mats.brass);
     const shade = mesh(
       new THREE.CylinderGeometry(0.11, 0.23, 0.28, 24, 1, true),
       mats.paper,
-      x,
+      lx,
       4.16,
-      -13.7,
+      lz,
     );
     shade.material = mats.paper.clone();
     shade.material.side = THREE.DoubleSide;
-    ball(0.06, 0.08, 0.06, x, 4.07, -13.7, warmGlow);
-    light(x, 4.05, -13.6, 7);
+    ball(0.06, 0.08, 0.06, lx, 4.07, lz, warmGlow);
+    light(lx, 4.05, lz + 0.1, 7);
   }
   for (const [x, w] of [
     [-4, 1.5],
@@ -739,22 +784,22 @@ export function buildMotel(scene, getState) {
   );
   const bag = round(0.62, 0.4, 0.34, 3, 3.96, -10.2, mats.fabric);
   box(0.3, 0.07, 0.09, 3, 4.18, -10.2, mats.joinery);
-  const phone = round(0.29, 0.09, 0.2, 6.7, 3.83, -13.65, mats.ivory);
-  round(0.31, 0.055, 0.08, 6.7, 3.9, -13.65, mats.dark);
+  const phone = round(0.29, 0.09, 0.2, 6.4, 3.83, -13.5, mats.ivory);
+  round(0.31, 0.055, 0.08, 6.4, 3.9, -13.5, mats.dark);
   interact(
     "phone",
     "Call home",
-    6.7,
+    6.4,
     3.94,
-    -13.65,
+    -13.5,
     2.4,
     (s) => !!s.items.bag && !s.items.called,
   );
   const familyPhoto = sign(
     "SUMMER 1974\nLENA + EVELYN",
-    6.7,
+    6.94,
     3.79,
-    -13.35,
+    -13.42,
     0.25,
     0.31,
     0,
@@ -764,9 +809,9 @@ export function buildMotel(scene, getState) {
   interact(
     "family",
     "Examine the family photograph",
-    6.7,
+    6.94,
     3.79,
-    -13.3,
+    -13.42,
     2.5,
     (s) => !!s.items.called,
   );
@@ -792,27 +837,37 @@ export function buildMotel(scene, getState) {
   box(0.62, 0.65, 0.025, 0.4, 4.7, -14.85, mats.glass);
   link([0.5, 3.94, -14.7], [0.5, 4.17, -14.7], 0.018, mats.metal);
   // Locket is an ordinary physical object, not another photographed gate.
-  const locket = groupAt(12.8, 3.8, -13.6);
-  ball(0.07, 0.065, 0.015, 0, 0, 0, mats.brass, locket);
+  const locket = groupAt(11.95, 3.94, -10.15);
+  ball(0.065, 0.015, 0.075, 0, 0, 0, mats.brass, locket);
+  const chain = mesh(
+    new THREE.TorusGeometry(0.11, 0.004, 5, 24),
+    mats.brass,
+    -0.05,
+    0.01,
+    -0.02,
+    locket,
+  );
+  chain.rotation.x = Math.PI / 2;
   const letter = sign(
     "FOR LENA\nREMEMBER ME",
-    12.8,
-    3.79,
-    -13.3,
-    0.37,
-    0.3,
+    11.45,
+    3.935,
+    -10.13,
+    0.6,
+    0.44,
     0,
     { bg: "#cbbba0", fg: "#352d27", size: 31 },
   );
   letter.rotation.x = -Math.PI / 2;
+  letter.rotation.z = Math.PI;
   interact(
     "locket",
     "Read Evelyn's letter / take her locket",
-    12.8,
-    3.84,
-    -13.5,
-    2.5,
-    (s) => !!s.doors.room7,
+    11.5,
+    3.96,
+    -10.25,
+    3.1,
+    (s) => !!s.doors.room7 && !s.items.locket,
   );
   // A weathered estate car: curved bodywork, glazed cabin, wheels and roof rack.
   function car(x, z, mat = mats.fabric, parent = scene) {
@@ -911,6 +966,21 @@ export function buildMotel(scene, getState) {
   const child = people(6.8, -0.5, "#9e776d", "audience");
   child.scale.setScalar(0.58);
   child.visible = false;
+  for (const actor of [clerk, mother, father, child]) batchRigidParts(actor);
+  dressMotel({
+    scene,
+    mats,
+    box,
+    round,
+    ball,
+    cylinder,
+    mesh,
+    link,
+    sign,
+    solid,
+    light,
+    chair,
+  });
   // Original motel identity, attached lettering, practical lights and details.
   const neon = new THREE.MeshStandardMaterial({
     color: "#dca788",
@@ -980,7 +1050,7 @@ export function buildMotel(scene, getState) {
   );
   scene.add(rain);
   scene.add(new THREE.HemisphereLight(0x7796ad, 0x302c22, 0.5));
-  const liveLights = Array.from({ length: 10 }, () => {
+  const liveLights = Array.from({ length: 6 }, () => {
     const l = new THREE.PointLight(0xffd3a0, 0, 11, 2);
     scene.add(l);
     return l;
@@ -988,8 +1058,16 @@ export function buildMotel(scene, getState) {
   const moon = new THREE.DirectionalLight(0x819eae, 0.52);
   moon.position.set(15, 20, 4);
   scene.add(moon);
+  const parkingFill = new THREE.DirectionalLight(0xa6b6b3, 0.42);
+  parkingFill.position.set(3, 10, 19);
+  scene.add(parkingFill);
   function syncDoors(dt = 0) {
     for (const d of doors) {
+      const desired = doorState[d.id] ? 1 : 0;
+      if (d.synced && Math.abs(d.amount - desired) < 0.0001) {
+        d.group.visible = d.id !== "room7" || !!getState().evidence.doorway;
+        continue;
+      }
       d.amount = dt
         ? THREE.MathUtils.damp(d.amount, doorState[d.id] ? 1 : 0, 8, dt)
         : doorState[d.id]
@@ -1007,6 +1085,7 @@ export function buildMotel(scene, getState) {
         y1: b.min.y,
         y2: b.max.y,
       });
+      d.synced = true;
     }
   }
   syncDoors();
@@ -1033,23 +1112,30 @@ export function buildMotel(scene, getState) {
     if (!o.isMesh || occluders.includes(o)) return;
     for (let p = o; p; p = p.parent) if (dynamic.has(p)) return;
     const p = new THREE.Vector3().setFromMatrixPosition(o.matrixWorld),
-      id = `${o.material.uuid}/${Math.floor(p.x / 10)}/${Math.floor(p.z / 10)}`;
+      nearBuilding = p.x > -15 && p.x < 15 && p.z > -16 && p.z < 21,
+      casts =
+        nearBuilding && !(o.geometry.type === "BoxGeometry" && o.scale.y < 0.2),
+      id = `${o.material.uuid}/${Math.floor(p.x / 10)}/${Math.floor(p.z / 10)}/${casts}`;
     const g = o.geometry.index ? o.geometry.toNonIndexed() : o.geometry.clone();
     g.applyMatrix4(o.matrixWorld);
-    if (!batches.has(id)) batches.set(id, { mat: o.material, geometries: [] });
+    if (!batches.has(id))
+      batches.set(id, { mat: o.material, geometries: [], casts });
     batches.get(id).geometries.push(g);
     remove.push(o);
   });
   remove.forEach((o) => o.removeFromParent());
-  for (const { mat, geometries } of batches.values()) {
+  for (const { mat, geometries, casts } of batches.values()) {
     const g = mergeGeometries(geometries, false);
     if (g) {
       const m = new THREE.Mesh(g, mat);
-      m.castShadow = m.receiveShadow = true;
+      m.castShadow = casts;
+      m.receiveShadow = true;
       scene.add(m);
     }
     geometries.forEach((g) => g.dispose());
   }
+  let lightTime = -Infinity,
+    nearest = [];
   function update(s, dt, t, player, photo = false) {
     syncDoors(dt);
     paintCover.visible = !s.evidence.doorway;
@@ -1068,18 +1154,21 @@ export function buildMotel(scene, getState) {
     mother.visible = photo && !!s.events.departure;
     memoryLight.intensity = mother.visible ? 18 : 0;
     rain.position.y = -((t * 5) % 3);
-    const nearest = [...lamps]
-      .sort(
-        (a, b) =>
-          (a.x - player.x) ** 2 +
-          (a.z - player.z) ** 2 +
-          (a.y - (floorAt(player.x, player.z) || 0) - 1.6) ** 2 -
-          ((b.x - player.x) ** 2 +
-            (b.z - player.z) ** 2 +
-            (b.y - (floorAt(player.x, player.z) || 0) - 1.6) ** 2),
-      )
-      .slice(0, 10);
-    for (let i = 0; i < 10; i++) {
+    if (t - lightTime > 0.2 || dt === 0) {
+      nearest = [...lamps]
+        .sort(
+          (a, b) =>
+            (a.x - player.x) ** 2 +
+            (a.z - player.z) ** 2 +
+            (a.y - (floorAt(player.x, player.z) || 0) - 1.6) ** 2 -
+            ((b.x - player.x) ** 2 +
+              (b.z - player.z) ** 2 +
+              (b.y - (floorAt(player.x, player.z) || 0) - 1.6) ** 2),
+        )
+        .slice(0, liveLights.length);
+      lightTime = t;
+    }
+    for (let i = 0; i < liveLights.length; i++) {
       const f = nearest[i],
         l = liveLights[i];
       l.position.set(f.x, f.y, f.z);

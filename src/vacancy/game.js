@@ -29,6 +29,7 @@ import {
 } from "../shared/runtime.js";
 import { createAnalogPresentation } from "../shared/analog-presentation.js";
 import { routeApproaches } from "../shared/navigation.js";
+import { batchRigidParts } from "./batching.js";
 import "./vacancy.css";
 
 const $ = (s) => document.querySelector(s),
@@ -70,7 +71,10 @@ const camera = new THREE.PerspectiveCamera(
 );
 camera.rotation.order = "YXZ";
 scene.add(camera);
-const renderer = createRenderer(canvas),
+const renderer = createRenderer(canvas, {
+    antialias: false,
+    preserveDrawingBuffer: false,
+  }),
   presentation = createAnalogPresentation(renderer),
   world = buildMotel(scene, () => state),
   audio = new MotelSound();
@@ -83,12 +87,15 @@ const weaponScene = new THREE.Scene(),
   );
 weaponScene.add(new THREE.HemisphereLight("#e8dcc3", "#443c2e", 2.3));
 const cameraModel = world.makeCamera(weaponScene);
+batchRigidParts(cameraModel);
 cameraModel.scale.setScalar(0.72);
 const flashlight = new THREE.SpotLight("#efdfc1", 20, 22, 0.65, 0.65, 1.5);
 flashlight.castShadow = true;
 flashlight.shadow.mapSize.set(1024, 1024);
 flashlight.shadow.bias = -0.0003;
 flashlight.shadow.normalBias = 0.015;
+flashlight.shadow.camera.near = 0.1;
+flashlight.shadow.camera.far = 24;
 flashlight.target.position.set(0, 0, -5);
 camera.add(flashlight, flashlight.target);
 const warning = document.createElement("div");
@@ -113,7 +120,11 @@ function applySettings() {
   audio.set(settings);
   renderer.shadowMap.enabled = settings.quality !== "low";
   renderer.setPixelRatio(
-    Math.min(devicePixelRatio, settings.quality === "low" ? 1 : 1.5),
+    Math.min(
+      devicePixelRatio,
+      1,
+      (settings.quality === "low" ? 720 : 900) / innerHeight,
+    ),
   );
   renderer.toneMappingExposure = settings.brightness;
   camera.fov = settings.fov;
@@ -202,6 +213,12 @@ function closePanel() {
   audio.pause(false);
   audio.ctx?.resume();
   lock();
+  if (state.items.locket && !state.events.departure)
+    subtitle(
+      "You have the locket. Leave through Room 6 and return to your car in the courtyard.",
+      10,
+      true,
+    );
 }
 function pause() {
   if (mode !== "playing") return;
@@ -454,6 +471,7 @@ function framed(position, margin = 0.82) {
 }
 function eligible(id) {
   const t = world.targets[id];
+  if (!photoAvailable(state, id) || !framed(t.position)) return false;
   return canCapture({
     available: photoAvailable(state, id),
     framed: framed(t.position),
@@ -491,6 +509,7 @@ function showPrint() {
   $("#photo-held").hidden = false;
   $("#photo-held").classList.remove("inspecting");
   $("#photo-image").src = held.image;
+  $("#develop-layer").style.opacity = String(Math.max(0, develop / 3));
   $("#photo-title").textContent = develop > 0 ? "DEVELOPING" : held.caption;
   $("#photo-note").textContent = "R INSPECT · Q PUT AWAY · J JOURNAL";
 }
@@ -506,6 +525,8 @@ function capture() {
   }
   state.film--;
   shotCooldown = 3;
+  // Input can arrive between frames; expose the viewpoint the player just aimed.
+  move(0);
   world.update(state, 0, state.elapsed, player, true);
   scene.updateMatrixWorld(true);
   camera.updateMatrixWorld(true);
@@ -868,6 +889,19 @@ function hud() {
 }
 function storyEvents() {
   if (
+    regionAt(player.x, player.z)?.name === "Room 7" &&
+    !state.events.room7Entered
+  ) {
+    state.events.room7Entered = true;
+    grace = Math.max(grace, 20);
+    subtitle(
+      "A letter lies under the desk lamp. FOR LENA. Read it and take the locket (E).",
+      12,
+      true,
+    );
+    save();
+  }
+  if (
     state.evidence.suitcase &&
     !state.events.doorKnock &&
     regionAt(player.x, player.z)?.name === "Upper walkway"
@@ -893,6 +927,7 @@ function storyEvents() {
   }
 }
 let last = performance.now();
+let hudTimer = 0;
 function frame(now) {
   if (disposed) return;
   const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
@@ -900,6 +935,7 @@ function frame(now) {
   if (mode === "playing") {
     state.elapsed += dt;
     grace = Math.max(0, grace - dt);
+    if (develop > 0 && develop <= dt) hudTimer = 0;
     develop = Math.max(0, develop - dt);
     shotCooldown = Math.max(0, shotCooldown - dt);
     move(dt);
@@ -922,7 +958,11 @@ function frame(now) {
     started ? weaponScene : null,
     weaponCamera,
   );
-  hud();
+  hudTimer -= dt;
+  if (hudTimer <= 0) {
+    hudTimer = 0.08;
+    hud();
+  }
   requestAnimationFrame(frame);
 }
 on(window, "keydown", (e) => {
@@ -947,6 +987,7 @@ on(window, "keydown", (e) => {
   }
   if (mode !== "playing") return;
   if (e.code === "KeyE" && !physical) {
+    move(0);
     const t = interactionTarget();
     if (t) interact(t.id);
   }
@@ -1006,6 +1047,7 @@ on(window, "resize", () => {
   camera.updateProjectionMatrix();
   weaponCamera.updateProjectionMatrix();
   renderer.setSize(innerWidth, innerHeight);
+  applySettings();
 });
 on(window, "beforeunload", () => save());
 on(window, "pagehide", () => {
@@ -1046,6 +1088,7 @@ Object.defineProperty(window, "vacancyDiagnostics", {
     footfalls: world.clerk.userData.footfallCount || 0,
     objective: objective(state),
     renderer: renderer.info.memory,
+    renderCalls: renderer.info.render.calls,
   }),
 });
 Object.defineProperty(window, "vacancyNavigation", {

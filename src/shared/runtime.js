@@ -1,11 +1,12 @@
 import * as THREE from "three";
 export { SETTINGS_KEY, readSettings } from "./settings.js";
-export function createRenderer(canvas) {
+export function createRenderer(canvas, options = {}) {
   const r = new THREE.WebGLRenderer({
     canvas,
     antialias: true,
     preserveDrawingBuffer: true,
     powerPreference: "high-performance",
+    ...options,
   });
   r.outputColorSpace = THREE.SRGBColorSpace;
   r.toneMapping = THREE.ACESFilmicToneMapping;

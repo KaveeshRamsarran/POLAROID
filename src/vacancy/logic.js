@@ -130,7 +130,7 @@ export function objective(s) {
   if (s.items.locket)
     return "Leave Room 7. Reach your car in the courtyard. Walk quietly; listen for keys.";
   if (s.doors.room7)
-    return "Read the letter and take the locket on the bedside table in Room 7 (E).";
+    return "Room 7: read FOR LENA and take the locket on the lit writing desk by the window (E).";
   if (s.evidence.doorway)
     return "Use Evelyn's key on the revealed door in Room 6 (E).";
   if (s.items.page)

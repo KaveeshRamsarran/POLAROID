@@ -49,6 +49,7 @@ The production build is in `dist/`. Serve that directory over HTTP; opening `ind
 | Journal                   | J or Tab                            |
 | Recall objective          | H                                   |
 | Pause                     | Esc or P                            |
+| Fullscreen                | FULLSCREEN button at bottom right   |
 
 ## Vacancy
 
@@ -58,6 +59,8 @@ The clerk follows sight, nearby running and a physical patrol route. Listen for 
 
 See the [chapter guide and spoiler walkthrough](docs/VACANCY.md). First-play duration and scare pacing await human playtesting.
 
+Room 7 now directs you to a lit writing desk: read FOR LENA and take the locket with E, then return to the car. The motel has new wallpaper, carpet, bedcovers, siding and pool surfaces, with furnished writing areas, televisions, bathroom details, reception fittings and a more finished courtyard. Rendering and route finding have been optimized. Existing saves can continue through the updated room.
+
 ## The Last Showing
 
 Bellwether Cinema is closing permanently. Complete three survey tasks, uncover Ada Bell's evacuation attempt with two photographs under one investigation reel, find the missing film, and open the service exit during the final screening. Clear objectives guide one step at a time; no drawer code or repeated audience comparisons are required. The patron advances when projection stops and stays where it is when the motor restarts. The expanded foyer separates ticketing, concessions and a furnished waiting lounge. Labelled hinged doors connect the auditorium, upstairs booth, archive, backstage and service route.
@@ -65,6 +68,8 @@ Bellwether Cinema is closing permanently. Complete three survey tasks, uncover A
 The chapter includes a recorded manager message, positional projector and mechanical sounds, real developing photographs, distinct photographic puzzles, a final departure and a completed-story marker. The pause menu returns to story selection. Blackwood's existing save key and latest gameplay remain intact; cinema progress and photographs use a separate versioned save. Settings are shared.
 
 See [chapter guide, spoiler walkthrough and integration notes](docs/THE-LAST-SHOWING.md). The intended 20-35 minute first-play duration has not been established by human playtesting.
+
+After the introductory jam, the cinema's film can occasionally slip and stop during investigation. A slowing motor, subtitle and optional status warning give twelve seconds' notice. Restart it at the booth to stop the patron where it has reached. These interruptions pause with the game and are suppressed during the tutorial, finale, recovery grace and dangerously close encounters.
 
 ## Blackwood House
 
@@ -99,6 +104,8 @@ npm run test:analog-style
 npm run test:anthology
 npm run test:vacancy
 npm run test:vacancy-systems
+npm run test:vacancy-polish
+npm run test:cinema-interruptions
 ```
 
 Browser tests require the development server and an installed Google Chrome. They create isolated browser profiles and do not use or modify your normal browser data.

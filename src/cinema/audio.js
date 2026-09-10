@@ -38,7 +38,7 @@ export class CinemaSound extends Soundscape {
     this.motorGain.connect(this.motorPan);
     this.motor.start();
   }
-  projector(status, remaining, paused) {
+  projector(status, remaining, paused, slipping = false) {
     if (!this.ctx || !this.motor) return;
     const t = this.ctx.currentTime;
     this.motorGain.gain.setTargetAtTime(
@@ -46,7 +46,11 @@ export class CinemaSound extends Soundscape {
       t,
       0.035,
     );
-    this.motor.playbackRate.setTargetAtTime(remaining < 35 ? 0.94 : 1, t, 0.15);
+    this.motor.playbackRate.setTargetAtTime(
+      slipping ? 0.86 : remaining < 35 ? 0.94 : 1,
+      t,
+      0.15,
+    );
   }
   carpet(position, sprint = false) {
     if (!this.ctx) return;

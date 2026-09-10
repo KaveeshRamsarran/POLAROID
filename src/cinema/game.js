@@ -13,6 +13,7 @@ import {
   investigationComplete,
   changeReel,
   tickProjector,
+  tickInterruptions,
   canPatronMove,
   canRegisterPhoto,
   objective,
@@ -1178,10 +1179,14 @@ function hud() {
     mode === "playing" ? proximity * 0.55 : 0,
   );
   const warning =
-    state.projector.status !== "running" || state.projector.remaining < 35;
+    state.projector.status !== "running" ||
+    state.projector.remaining < 35 ||
+    state.projector.faultWarning;
   status.classList.toggle("danger", warning);
   status.hidden = !started || (!settings.visualWarnings && warning);
   status.innerHTML = `PROJECTOR / ${state.projector.status === "power" ? "POWER UNAVAILABLE" : state.projector.status.toUpperCase()}<br>${REELS[state.activeReel].name}<br>${state.projector.status === "running" ? `${Math.ceil(state.projector.remaining)} SEC REMAINING` : state.patron.awakened ? "LISTEN FOR FOOTSTEPS" : ""}`;
+  if (state.projector.faultWarning)
+    status.innerHTML += "<br>FILM SLIPPING / RETURN TO BOOTH";
   if ($("#physical-warning"))
     $("#physical-warning").textContent =
       mode === "playing" && state.projector.status !== "running"
@@ -1225,7 +1230,7 @@ function hud() {
 }
 function frame(now) {
   if (disposed) return;
-  const dt = Math.min(0.05, (now - last) / 1000);
+  const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
   last = now;
   if (mode === "playing") {
     grace = Math.max(0, grace - dt);
@@ -1244,6 +1249,27 @@ function frame(now) {
         subtitle("The reel flutters. Thirty-five seconds remain.", 7, true);
       } else subtitle("The reel runs out. The motor falls silent.", 6, true);
     }
+    for (const e of tickInterruptions(state, dt, {
+      grace,
+      safe:
+        Math.hypot(player.x - state.patron.x, player.z - state.patron.z) > 9,
+    })) {
+      if (e === "slip-warning") {
+        audio.mechanism({ x: 13.3, y: 4.9, z: -4.5 });
+        subtitle(
+          "The film is slipping. The motor may stop. Head back toward the booth.",
+          12,
+          true,
+        );
+      } else {
+        subtitle(
+          "The film slips free. The projector has stopped. Restart it in the booth.",
+          10,
+          true,
+        );
+        save();
+      }
+    }
     move(dt);
     storyEvents(dt);
     threat(dt);
@@ -1258,6 +1284,7 @@ function frame(now) {
     state.projector.status,
     state.projector.remaining,
     mode !== "playing",
+    !!state.projector.faultWarning,
   );
   presentation.render(
     scene,

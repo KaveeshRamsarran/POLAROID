@@ -133,6 +133,45 @@ export function canPatronMove(s, paused = false, grace = 0) {
     grace <= 0
   );
 }
+export function tickInterruptions(
+  s,
+  dt,
+  { paused = false, grace = 0, safe = true, random = Math.random } = {},
+) {
+  if (paused || s.completed || grace > 0) return [];
+  const p = s.projector;
+  if (
+    !s.events.jamRepaired ||
+    s.events.climax ||
+    s.events.released ||
+    p.status !== "running"
+  ) {
+    p.faultIn = null;
+    p.faultWarning = false;
+    return [];
+  }
+  // A fresh interval follows each restart. Save the chosen interval so loading
+  // does not reroll it. Introductory work and the final escape are protected.
+  if (!Number.isFinite(p.faultIn)) p.faultIn = 85 + random() * 70;
+  p.faultIn = Math.max(0, p.faultIn - dt);
+  if (!safe && p.faultIn <= 12) {
+    p.faultIn = 12;
+    return [];
+  }
+  if (p.faultIn <= 12 && !p.faultWarning) {
+    p.faultIn = 12;
+    p.faultWarning = true;
+    return ["slip-warning"];
+  }
+  if (p.faultIn === 0) {
+    p.status = "stopped";
+    p.faultWarning = false;
+    p.faultIn = null;
+    p.slips = (p.slips || 0) + 1;
+    return ["slipped"];
+  }
+  return [];
+}
 export function canRegisterPhoto({
   reel,
   requiredReel,

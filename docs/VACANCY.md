@@ -35,7 +35,7 @@ The courtyard contains Lena's car, marked parking spaces, a drained pool, diving
 5. Photograph the diving board from the far side of the drained pool. A room key appears in the memory and then becomes collectable on the board.
 6. Take the key and read the loose 1974 page on the reception counter. Arthur and Lena were in Room 6; Evelyn was in Room 7. Arthur returned repeatedly, but could no longer find the seventh room.
 7. Return to Room 6 and photograph the faded rectangle on its right-hand wall. The concealed door becomes visible. Open it with Evelyn's key.
-8. Read Evelyn's letter and take her locket from the Room 7 bedside table. The motel was erasing her from memory. Arthur got Lena out while he was forgetting the woman beside him. Evelyn's remaining presence cannot leave with you, but her name and keepsake can.
+8. Go to the lit writing desk beside Room 7's window. Press E on the letter marked FOR LENA to read it and take Evelyn's locket. The motel was erasing her from memory. Arthur got Lena out while he was forgetting the woman beside him. Evelyn's remaining presence cannot leave with you, but her name and keepsake can.
 9. Return to your car, using closed doors, the connecting route and a flash if needed. Upon reaching the car, the night begins to lift. Photograph the upstairs rooms: Evelyn is now visible in the print, watching you leave.
 10. Get into the car. Lena calls Daniel and tells him their mother's name. The chapter ends on the final photograph and the unsettling memory of the register, which contained Lena's name before she arrived. Return to POLAROID to see Vacancy marked completed.
 
@@ -58,6 +58,10 @@ Important dialogue is presented as readable, persistent text with contextual tel
 
 ## Verification and limits
 
-Run `npm test`, `npm run test:vacancy`, `npm run test:vacancy-systems` and `npm run test:anthology`. Browser commands accept a server URL after `--` and use isolated Chrome profiles. The progression test uses checkpoint fixtures between real interactions and scene captures, plus route and keyboard-door checks. It does not establish uninterrupted first-play duration or human scare pacing. Those remain playtesting tasks.
+Run `npm test`, `npm run test:vacancy`, `npm run test:vacancy-systems`, `npm run test:vacancy-polish` and `npm run test:anthology`. Browser commands accept a server URL after `--` and use isolated Chrome profiles. The progression test uses checkpoint fixtures between real interactions and scene captures. The polish test starts at Room 7's door, then continuously walks to the letter, back through Room 6, downstairs and to the car, takes the final photograph and reaches the ending without further checkpoint repositioning. It also checks fullscreen entry and exit. These do not establish uninterrupted first-play duration or human scare pacing.
+
+The motel polish adds striped wallpaper, woven carpet and bedcovers, finer asphalt, faded siding and aged pool tile. Guest rooms have televisions, dressers, hanging coats, shoes, towels and bathroom fittings. Reception has key hooks, notices, plants and a clock; the laundry and courtyard have additional working details, fences, gutters, window boxes and pool furniture. Doorways and the escape route remain clear.
+
+Rigid meshes are batched without removing articulated joints, settled doors no longer rebuild collision bounds each frame, and A\* limits route-search work. Six nearby lights and a 900-pixel scene-height cap (720 with reduced effects) bound rendering cost while keeping interface text at native resolution. Photographs synchronize the latest mouse input before validating and rendering their viewpoint. Existing version-1 saves remain usable, including saves made inside Room 7.
 
 `scripts/vacancy-review.mjs` creates environmental review screenshots and refreshes the chapter's menu photograph against Vite. Do not run it while other development-server tests are active: updating the artwork can trigger Vite reloads.

@@ -14,6 +14,8 @@ The projector has five states: running, stopped, exhausted, jammed, and power un
 
 After the first discovery, the patron moves only in the silence. Restarting the motor holds its existing position. It can follow aisles, corridors and stairs and open unlocked internal doors. Its footsteps originate at its position. The initial seated figure is visible only in photographs; an awakened patron becomes physically visible at close range.
 
+After repairing the introductory jam, film can randomly slip during investigation. Each running interval selects an 85–155-second delay; the last twelve seconds bring a slowing motor, subtitle and optional visual warning. Choose START MOTOR at the projector after a slip. The active reel and patron position are preserved. Interruptions are suppressed during the tutorial, final screening, checkpoint grace and when the patron is within nine metres. The countdown is saved and freezes while paused.
+
 Projector controls, physical documents and held-print inspection do **not** pause the story. Escape/P, the pause button and the journal pause timers and movement. Leaving the browser tab also pauses. A restored checkpoint gives an 18-second grace period; the first scripted jam provides its own distant starting position.
 
 The 20–35 minute duration is a design target. Automated verification does not establish first-play duration, scare effectiveness, or speaker/headphone balance.

@@ -6,6 +6,7 @@ import {
   restoreStory,
   changeReel,
   tickProjector,
+  tickInterruptions,
   canPatronMove,
   canRegisterPhoto,
   openingComplete,
@@ -15,6 +16,43 @@ import {
   navigation,
   objective,
 } from "../src/cinema/logic.js";
+test("unplanned projector stops give a full warning and retain patron progress", () => {
+  const s = newStory();
+  s.events.jamRepaired = true;
+  s.patron.awakened = true;
+  s.patron.x = 9;
+  s.patron.z = 2;
+  tickInterruptions(s, 1, { random: () => 0 });
+  assert.equal(s.projector.faultIn, 84);
+  assert.deepEqual(tickInterruptions(s, 75), ["slip-warning"]);
+  assert.equal(s.projector.faultIn, 12);
+  assert.equal(s.projector.status, "running");
+  const saved = restoreStory(JSON.parse(JSON.stringify(s)));
+  assert.equal(saved.projector.faultIn, 12);
+  const frozen = JSON.stringify(saved);
+  tickInterruptions(saved, 30, { paused: true });
+  assert.equal(JSON.stringify(saved), frozen);
+  assert.deepEqual(tickInterruptions(saved, 12), ["slipped"]);
+  assert.equal(saved.projector.status, "stopped");
+  assert(canPatronMove(saved));
+  assert.deepEqual(saved.patron, s.patron);
+  saved.projector.status = "running";
+  tickInterruptions(saved, 1, { random: () => 1 });
+  assert.equal(saved.projector.faultIn, 154);
+});
+test("random interruptions protect the introduction, climax and close danger", () => {
+  const s = newStory();
+  assert.deepEqual(tickInterruptions(s, 500), []);
+  s.events.jamRepaired = true;
+  s.projector.faultIn = 1;
+  tickInterruptions(s, 0.1, { safe: false });
+  assert.equal(s.projector.faultIn, 12);
+  assert.equal(s.projector.status, "running");
+  s.events.climax = true;
+  assert.deepEqual(tickInterruptions(s, 500), []);
+  assert.equal(s.projector.status, "running");
+  assert.equal(s.projector.faultIn, null);
+});
 test("cinema saves are versioned and independent of Blackwood", () => {
   assert.notEqual(SAVE_KEY, "polaroid.save.v1");
   const a = newStory(),

@@ -1,4 +1,25 @@
 /* Shared anthology direction: ordinary places, muted light, plain readable UI. */
+#fullscreen-button {
+  position: fixed;
+  right: 26px;
+  bottom: 14px;
+  z-index: 40;
+  padding: 7px 10px;
+  color: #d5cbb8;
+  border: 1px solid #a89c7960;
+  background: #0b100ed9;
+  font:
+    10px Arial,
+    sans-serif;
+  letter-spacing: 0.08em;
+}
+#fullscreen-button:focus-visible {
+  outline: 2px solid #e7d7ae;
+  outline-offset: 3px;
+}
+body:has(.anthology) #fullscreen-button {
+  bottom: 62px;
+}
 body .lore-journal {
   margin: 28px 0;
   border-top: 1px solid #9e8d6a55;
