@@ -10,7 +10,7 @@ Blackwood House now has the character of an old family home: faded botanical wal
 
 The Last Showing now includes optional physical records about the patron and his daughter, Ada's shift notes and a missing witness account. New documents stay in the photographic journal alongside the simpler main checklist. The cinema has aged plaster, patterned carpet, patched upholstery, mounted signs and clear lobby openings. Its human characters use distinct original face textures and articulated hands; see [chapter details](docs/THE-LAST-SHOWING.md) and [asset provenance](docs/CINEMA-ASSETS.md).
 
-A restrained analog picture pairs muted colors, gentle highlight spill and a slightly softer scene with clear sans-serif titles and subtitles. All three chapters share the treatment; disable **Analog picture** in settings for the clean render, or select reduced effects. Grain remains at 0.015 or below. The cinema figures have civilian jackets, shirts, trousers and more defined faces; contact shading and flashlight shadows ground the furniture.
+A shared visual overhaul pairs cool night skies and woodland with warm practical lights, locally bundled 1K surface maps, detailed plaster, fabric and floorboards, fitted character clothing and smoother handheld motion. The anthology menu retains its chapter previews on the right with bolder title typography. Grain is reduced to 0.008. Disable **Analog picture** for a clean render or select reduced effects. Adaptive resolution, nearby light budgets and merged static geometry help keep frame times steady; performance varies by hardware. See [visual direction and asset provenance](docs/VISUAL-DIRECTION.md).
 
 ## Play
 

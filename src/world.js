@@ -15,6 +15,7 @@ import {
 
 import { createSurface, repeatMaterial, surfaceKinds } from "./materials.js";
 import { createHouseFinishes, createHousePicture } from "./house-finishes.js";
+import { nightEnvironment } from "./shared/night-environment.js";
 
 const rnd = seededRandom(971017);
 export function buildWorld(scene) {
@@ -1882,7 +1883,7 @@ export function buildWorld(scene) {
   const makeCamera = (parent) => sharedCamera(parent, mats);
   // The wings added rooms without adding lamps, so a few more live sources
   // follow the player around the larger plan.
-  const LIVE_LIGHTS = 9,
+  const LIVE_LIGHTS = 6,
     lights = [];
   for (let i = 0; i < LIVE_LIGHTS; i++) {
     const l = new THREE.PointLight(0xffd4a4, 0, 12, 2);
@@ -1899,7 +1900,7 @@ export function buildWorld(scene) {
     link([x, 2.5, 17], [x * 0.75, 3.1, 17], 0.065, mats.wood);
   }
   box(45, 0.1, 26, 0, -0.2, 24, mats.dark);
-  for (let i = 0; i < 18; i++) {
+  for (let i = 0; i < 6; i++) {
     const side = i % 2 ? 1 : -1,
       x = side * (7 + rnd() * 13),
       z = 15 + rnd() * 19,
@@ -1982,6 +1983,14 @@ export function buildWorld(scene) {
     }
     for (const g of geometries) g.dispose();
   }
+  nightEnvironment(scene, {
+    centre: [0, 20],
+    radius: 25,
+    count: 42,
+    arc: Math.PI,
+  });
+  let lightClock = 0,
+    nearestLights = [];
   return {
     solids,
     architecture,
@@ -2018,19 +2027,23 @@ export function buildWorld(scene) {
         d.open = THREE.MathUtils.damp(d.open, d.target, 5, dt);
         d.pivot.rotation.y = -d.open * Math.PI * 0.49;
       }
-      const nearest = [...fixtures]
-        .sort(
-          (a, b) =>
-            (a.x - position.x) ** 2 +
-            (a.y - position.y) ** 2 +
-            (a.z - position.z) ** 2 -
-            ((b.x - position.x) ** 2 +
-              (b.y - position.y) ** 2 +
-              (b.z - position.z) ** 2),
-        )
-        .slice(0, LIVE_LIGHTS);
+      lightClock -= dt;
+      if (lightClock <= 0 || !nearestLights.length) {
+        lightClock = 0.2;
+        nearestLights = [...fixtures]
+          .sort(
+            (a, b) =>
+              (a.x - position.x) ** 2 +
+              (a.y - position.y) ** 2 +
+              (a.z - position.z) ** 2 -
+              ((b.x - position.x) ** 2 +
+                (b.y - position.y) ** 2 +
+                (b.z - position.z) ** 2),
+          )
+          .slice(0, LIVE_LIGHTS);
+      }
       for (let i = 0; i < LIVE_LIGHTS; i++) {
-        const f = nearest[i],
+        const f = nearestLights[i],
           l = lights[i];
         if (!f) continue;
         l.position.set(f.x, f.y, f.z);
@@ -2040,7 +2053,7 @@ export function buildWorld(scene) {
         l.intensity = f.power * (power ? flicker : 0.025);
         if (f.glow) f.glow.emissiveIntensity = power ? 1.35 * flicker : 0.08;
       }
-      ambient.intensity = 0.42 + storm * 0.8;
+      ambient.intensity = 0.28 + storm * 0.65;
       for (const w of windows) w.emissiveIntensity = 0.6 + storm * 4;
       for (const a of animated) {
         if (a.type === "curtain")

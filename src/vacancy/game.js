@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { updateCameraPose } from "../shared/camera-motion.js";
 import { buildMotel } from "./world.js";
 import { MotelSound } from "./audio.js";
 import {
@@ -29,7 +30,6 @@ import {
 } from "../shared/runtime.js";
 import { createAnalogPresentation } from "../shared/analog-presentation.js";
 import { routeApproaches } from "../shared/navigation.js";
-import { batchRigidParts } from "./batching.js";
 import "./vacancy.css";
 
 const $ = (s) => document.querySelector(s),
@@ -85,9 +85,8 @@ const weaponScene = new THREE.Scene(),
     0.015,
     4,
   );
-weaponScene.add(new THREE.HemisphereLight("#e8dcc3", "#443c2e", 2.3));
+weaponScene.add(new THREE.HemisphereLight("#dfd9cf", "#222a36", 1.65));
 const cameraModel = world.makeCamera(weaponScene);
-batchRigidParts(cameraModel);
 cameraModel.scale.setScalar(0.72);
 const flashlight = new THREE.SpotLight("#efdfc1", 20, 22, 0.65, 0.65, 1.5);
 flashlight.castShadow = true;
@@ -132,6 +131,7 @@ function applySettings() {
 }
 await world.ready;
 applySettings();
+await presentation.prepare(scene, camera, weaponScene, weaponCamera);
 // The family keepsake is a real, separately staged 1974 photograph. It is
 // supplied story material, never substituted for a player's evidence exposure.
 {
@@ -819,16 +819,21 @@ function move(dt) {
     player.x,
     (floorAt(player.x, player.z) || 0) +
       (crouch ? 1.08 : 1.64) +
-      (moved ? Math.sin(state.elapsed * 12) * 0.012 : 0),
+      (moved ? Math.sin(state.elapsed * 12) * 0.012 * settings.shake : 0),
     player.z,
   );
   camera.rotation.set(player.pitch, player.yaw, 0);
   camera.updateMatrixWorld(true);
   const aim = !!keys.MouseRight;
   $("#viewfinder").hidden = !aim;
-  cameraModel.position.set(aim ? 0.2 : 0.28, aim ? -0.18 : -0.28, -0.53);
-  cameraModel.rotation.z =
-    -0.05 + (moved ? Math.sin(state.elapsed * 6) * 0.009 : 0);
+  updateCameraPose(cameraModel, dt, {
+    aim,
+    moving: moved,
+    sprint: motion.sprint,
+    time: state.elapsed,
+    shake: settings.shake,
+    shotAge: 3 - shotCooldown,
+  });
 }
 function hud() {
   $("#phase").textContent = state.items.locket
@@ -930,6 +935,7 @@ let last = performance.now();
 let hudTimer = 0;
 function frame(now) {
   if (disposed) return;
+  presentation.adapt(now - last, mode === "playing");
   const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
   last = now;
   if (mode === "playing") {

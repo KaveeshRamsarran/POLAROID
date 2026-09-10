@@ -3,8 +3,8 @@ export { SETTINGS_KEY, readSettings } from "./settings.js";
 export function createRenderer(canvas, options = {}) {
   const r = new THREE.WebGLRenderer({
     canvas,
-    antialias: true,
-    preserveDrawingBuffer: true,
+    antialias: false,
+    preserveDrawingBuffer: false,
     powerPreference: "high-performance",
     ...options,
   });

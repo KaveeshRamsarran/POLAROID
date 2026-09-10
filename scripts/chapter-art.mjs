@@ -31,7 +31,7 @@ try {
       path: "public/chapter-art/cinema.jpg",
       type: "jpeg",
       quality: 90,
-      clip: { x: 0, y: 0, width: 1440, height: 900 },
+      clip: { x: 0, y: 35, width: 1440, height: 545 },
     });
   }
   if (!chapter || chapter === "blackwood") {

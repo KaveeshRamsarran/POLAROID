@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { createCameraHand } from "../hand.js";
 import { modelTools } from "./model-tools.js";
+import { batchRigidParts } from "./batching.js";
 export function makeCamera(parent, mats) {
   const { round, box, sign, cylinder, mesh } = modelTools(parent, mats);
   const g = new THREE.Group();
@@ -50,5 +51,6 @@ export function makeCamera(parent, mats) {
   g.add(createCameraHand(mats));
   g.position.set(0.28, -0.28, -0.53);
   g.rotation.set(-0.13, -0.18, -0.05);
+  batchRigidParts(g);
   return g;
 }

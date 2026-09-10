@@ -35,6 +35,10 @@ export function updateObserverAnimation(actor, dt, time, player, floorAt) {
     speed: 0,
     contacts: [true, true],
   });
+  if (dt <= 0) {
+    state.last.copy(actor.position);
+    return;
+  }
   const dx = actor.position.x - state.last.x,
     dz = actor.position.z - state.last.z;
   const moved = Math.hypot(dx, dz);
@@ -57,9 +61,11 @@ export function updateObserverAnimation(actor, dt, time, player, floorAt) {
     cycle = state.phase / (2 * Math.PI);
   const bob =
     blend * (-0.055 - chase * 0.025 + Math.cos(state.phase * 2) * 0.012);
-  data.body.position.y = bob;
+  const human = data.human === true;
+  const breath = Math.sin(time * 1.45) * 0.003 * (1 - blend);
+  data.body.position.y = bob + breath;
   data.body.rotation.z = Math.sin(state.phase) * 0.017 * blend;
-  data.body.rotation.x = 0.025 + chase * 0.07 * blend;
+  data.body.rotation.x = (human ? 0.008 : 0.025) + chase * 0.07 * blend;
   for (const limb of data.limbs) {
     const phase = state.phase + (limb.side > 0 ? Math.PI : 0);
     if (limb.type === "arm") {
@@ -119,8 +125,9 @@ export function updateObserverAnimation(actor, dt, time, player, floorAt) {
     dt,
   );
   data.head.rotation.z =
-    -0.24 +
+    (human ? -0.025 : -0.24) +
     Math.sin(time * 0.71) * 0.025 -
     Math.sin(state.phase) * 0.02 * blend;
-  data.head.rotation.x = 0.1 + Math.sin(time * 1.7) * 0.02;
+  data.head.rotation.x =
+    (human ? 0.015 : 0.1) + Math.sin(time * 1.7) * (human ? 0.008 : 0.02);
 }

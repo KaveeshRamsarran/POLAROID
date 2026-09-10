@@ -51,3 +51,4 @@ artifacts/*
 !artifacts/vacancy-ending.png
 !artifacts/vacancy-writing-desk.png
 !artifacts/vacancy-polished-final.png
+!artifacts/presentation-performance.json

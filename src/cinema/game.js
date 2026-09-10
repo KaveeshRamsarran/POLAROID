@@ -1,4 +1,5 @@
 import { createAnalogPresentation } from "../shared/analog-presentation.js";
+import { updateCameraPose } from "../shared/camera-motion.js";
 import * as THREE from "three";
 import { buildCinema } from "./world.js";
 import { CinemaSound } from "./audio.js";
@@ -75,7 +76,7 @@ const weaponScene = new THREE.Scene(),
     0.015,
     4,
   );
-weaponScene.add(new THREE.HemisphereLight("#e8dcc3", "#443c2e", 2.3));
+weaponScene.add(new THREE.HemisphereLight("#dfd9cf", "#222a36", 1.65));
 const cameraModel = world.makeCamera(weaponScene);
 cameraModel.scale.setScalar(0.72);
 const flashlight = new THREE.SpotLight("#efdfb7", 18, 22, 0.65, 0.65, 1.5);
@@ -113,6 +114,7 @@ function applySettings() {
 // taking it, so fast launches cannot permanently bake an untextured face.
 await world.ready;
 applySettings();
+await presentation.prepare(scene, camera, weaponScene, weaponCamera);
 {
   const portrait = new THREE.PerspectiveCamera(34, 1.1 / 0.8, 0.035, 20);
   portrait.position.set(-8.8, 1.45, -21.8);
@@ -713,6 +715,7 @@ function capture() {
   }
   state.film--;
   shotCooldown = 2.2;
+  move(0);
   world.update(state, 0, state.elapsed, player, true);
   scene.updateMatrixWorld(true);
   camera.updateMatrixWorld(true);
@@ -1139,15 +1142,20 @@ function move(dt) {
     player.x,
     (floorAt(player.x, player.z) || 0) +
       (crouch ? 1.08 : 1.64) +
-      (moved ? Math.sin(state.elapsed * 12) * 0.015 : 0),
+      (moved ? Math.sin(state.elapsed * 12) * 0.015 * settings.shake : 0),
     player.z,
   );
   camera.rotation.set(player.pitch, player.yaw, 0);
   const aim = !!keys.MouseRight;
   $("#viewfinder").hidden = !aim;
-  cameraModel.position.set(aim ? 0.2 : 0.28, aim ? -0.18 : -0.28, -0.53);
-  cameraModel.rotation.z =
-    -0.05 + (moved ? Math.sin(state.elapsed * 6) * 0.009 : 0);
+  updateCameraPose(cameraModel, dt, {
+    aim,
+    moving: moved,
+    sprint: motion.sprint,
+    time: state.elapsed,
+    shake: settings.shake,
+    shotAge: 2.2 - shotCooldown,
+  });
 }
 function hud() {
   $("#phase").textContent = state.events.climax
@@ -1230,6 +1238,7 @@ function hud() {
 }
 function frame(now) {
   if (disposed) return;
+  presentation.adapt(now - last, mode === "playing");
   const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
   last = now;
   if (mode === "playing") {

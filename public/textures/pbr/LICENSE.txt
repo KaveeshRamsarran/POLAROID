@@ -1,0 +1,17 @@
+These material maps are adapted from ambientCG assets by Lennart Demes.
+They are dedicated to the public domain under CC0 1.0 Universal:
+https://creativecommons.org/publicdomain/zero/1.0/
+https://docs.ambientcg.com/license/
+
+Original assets (1K-JPG, downloaded 10 September 2026):
+https://ambientcg.com/view?id=Asphalt033
+https://ambientcg.com/view?id=Fabric030
+https://ambientcg.com/view?id=Plaster001
+https://ambientcg.com/view?id=Wallpaper001A
+https://ambientcg.com/view?id=Wood066
+https://ambientcg.com/view?id=WoodFloor051
+
+Included channels: Color, NormalGL and Roughness.
+Images retain 1024 x 1024 resolution and were re-encoded as quality-92 JPEGs
+for local delivery. Material tint, scale and normal strength are set in code.
+No attribution is required by CC0; this record is retained for provenance.

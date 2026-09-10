@@ -74,8 +74,14 @@ body .title-echo {
   display: none;
 }
 body .anthology-title h1 {
-  font-size: clamp(60px, 7.3vw, 112px);
-  letter-spacing: -0.045em;
+  font-family: Impact, "Arial Narrow", "Arial Black", sans-serif;
+  font-size: clamp(70px, 8.8vw, 132px);
+  letter-spacing: 0.025em;
+  color: #ece4d4;
+  font-weight: 900;
+  text-shadow:
+    0 3px 2px #0006,
+    0 12px 50px #000b;
 }
 body .anthology-title p,
 body .tagline,
@@ -90,7 +96,7 @@ body .anthology-title p {
   line-height: 1.55;
 }
 body .chapter-name h2 {
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: "Franklin Gothic Medium", "Arial Narrow", Arial, sans-serif;
   font-weight: 800;
   font-size: clamp(22px, 2.2vw, 32px);
   letter-spacing: -0.025em;
@@ -114,7 +120,7 @@ body .chapter-card.selected {
   text-shadow: 0 2px 12px #000;
 }
 body .menu-backgrounds img {
-  filter: saturate(0.7) brightness(0.87);
+  filter: saturate(0.85) brightness(0.95);
 }
 body .menu-shade {
   background:

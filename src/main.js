@@ -1255,9 +1255,10 @@ let previous = performance.now(),
   fpsSamples = [],
   lastSecond = 0;
 function animate(now) {
+  presentation.adapt(now - previous, mode === "playing");
   renderer.info.reset();
   requestAnimationFrame(animate);
-  const dt = Math.min((now - previous) / 1000, 0.05);
+  const dt = Math.max(0, Math.min((now - previous) / 1000, 0.05));
   previous = now;
   if (mode === "menu") {
     time += dt;
@@ -1266,7 +1267,7 @@ function animate(now) {
     world.observer.visible = false;
     cameraModel.visible = false;
   } else if (mode === "playing") updatePlaying(dt);
-  updateLights(dt);
+  updateLights(mode === "playing" || mode === "menu" ? dt : 0);
   presentation.render(
     scene,
     camera,
@@ -1403,6 +1404,7 @@ window.addEventListener("beforeunload", () => {
   if (started && !state.escaped) save();
 });
 world.setCode(state.code);
+await presentation.prepare(scene, camera, weaponScene, weaponCamera);
 requestAnimationFrame(animate);
 setTimeout(() => {
   $("loading").style.opacity = "0";

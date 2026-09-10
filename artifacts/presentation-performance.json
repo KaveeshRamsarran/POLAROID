@@ -1,0 +1,93 @@
+{
+  "viewport": [
+    1440,
+    900
+  ],
+  "method": "300 warmed RAF intervals while turning, isolated headless Chrome, per chapter and quality",
+  "results": [
+    {
+      "chapter": "blackwood",
+      "quality": "high",
+      "loadMs": 3902,
+      "medianMs": 10,
+      "p95Ms": 10.100000000000364,
+      "maxMs": 10.200000000000728,
+      "drawsPerFrame": 488.4266666666667,
+      "renderSize": [
+        1440,
+        900
+      ],
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 (0x00002487) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+    },
+    {
+      "chapter": "blackwood",
+      "quality": "low",
+      "loadMs": 3062,
+      "medianMs": 10,
+      "p95Ms": 10.100000000000364,
+      "maxMs": 10.100000000000364,
+      "drawsPerFrame": 330.27,
+      "renderSize": [
+        1152,
+        720
+      ],
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 (0x00002487) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+    },
+    {
+      "chapter": "last-showing",
+      "quality": "high",
+      "loadMs": 4179,
+      "medianMs": 10,
+      "p95Ms": 10.100000000000364,
+      "maxMs": 10.200000000000728,
+      "drawsPerFrame": 355.66333333333336,
+      "renderSize": [
+        1440,
+        900
+      ],
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 (0x00002487) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+    },
+    {
+      "chapter": "last-showing",
+      "quality": "low",
+      "loadMs": 3507,
+      "medianMs": 10,
+      "p95Ms": 10.100000000000364,
+      "maxMs": 10.200000000000728,
+      "drawsPerFrame": 253.41,
+      "renderSize": [
+        1152,
+        720
+      ],
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 (0x00002487) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+    },
+    {
+      "chapter": "vacancy",
+      "quality": "high",
+      "loadMs": 4351,
+      "medianMs": 10,
+      "p95Ms": 10.100000000000364,
+      "maxMs": 10.200000000000728,
+      "drawsPerFrame": 215.82333333333332,
+      "renderSize": [
+        1440,
+        900
+      ],
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 (0x00002487) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+    },
+    {
+      "chapter": "vacancy",
+      "quality": "low",
+      "loadMs": 3498,
+      "medianMs": 10,
+      "p95Ms": 10.100000000000364,
+      "maxMs": 10.100000000000364,
+      "drawsPerFrame": 155.52666666666667,
+      "renderSize": [
+        1152,
+        720
+      ],
+      "gpu": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 (0x00002487) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+    }
+  ]
+}

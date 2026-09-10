@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { seededRandom } from "./logic.js";
+import { pbrSurface } from "./shared/pbr.js";
 
 // Every surface is authored to tile seamlessly at 3 world units, so a wall and a
 // floor cut from the same map line up wherever they meet.
@@ -17,6 +18,14 @@ export const surfaceKinds = Object.keys(SURFACES);
 // Tileable, multi-scale surfaces. Pigment, relief and roughness are independent:
 // a stain changes the paint colour without turning into a raised lump of plaster.
 export function createSurface(kind) {
+  const authored = {
+    wood: "WoodFloor051",
+    wall: "Plaster001",
+    fabric: "Fabric030",
+    concrete: "Asphalt033",
+  }[kind];
+  const maps = authored && pbrSurface(authored);
+  if (maps) return maps;
   const { size, base } = SURFACES[kind] || SURFACES.concrete;
   const random = seededRandom(1741 + kind.charCodeAt(0) * 97);
   const grids = [4, 8, 16, 32, 128].map((n) => ({

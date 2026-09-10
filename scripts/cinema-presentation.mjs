@@ -36,7 +36,7 @@ try {
   await view(0, 20, 0, 4);
   assert.equal(
     await page.locator("#grain").evaluate((e) => getComputedStyle(e).opacity),
-    "0.015",
+    "0.008",
   );
   await page.screenshot({ path: "artifacts/cinema-lobby.png" });
   await view(3.5, 18, 8.3, 16.7);

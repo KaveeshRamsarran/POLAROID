@@ -15,7 +15,8 @@ page.on("console", (m) => {
 });
 async function readable() {
   await page.waitForTimeout(300);
-  const bright = await page.evaluate(() => {
+  const bright = await page.evaluate(async () => {
+    await new Promise(requestAnimationFrame);
     const c = document.createElement("canvas");
     c.width = 64;
     c.height = 40;

@@ -3,7 +3,9 @@ import "./style.css";
 import "./anthology.css";
 import "./presentation.css";
 import "./shared/fullscreen.js";
+import { preloadPbr } from "./shared/pbr.js";
 const chapter = new URLSearchParams(location.search).get("chapter");
+if (["blackwood", "last-showing", "vacancy"].includes(chapter)) await preloadPbr();
 if (chapter === "blackwood") await import("./main.js");
 else if (chapter === "last-showing") await import("./cinema/game.js");
 else if (chapter === "vacancy") await import("./vacancy/game.js");
@@ -119,7 +121,7 @@ else {
   document.querySelector("#anthology-credits").onclick = () =>
     anthologyPanel(
       "STILL / HERE",
-      "<p>POLAROID<br>Blackwood House / The Last Showing / Vacancy</p><p>Built with Three.js. Worlds, materials, camera and character models are created within the game. Shutter and concrete footstep recordings were supplied for POLAROID. The cinema manager is a fictional message voiced using Windows speech synthesis.</p><p>Bellwether Cinema, Briar Glen Motor Lodge and their characters are fictional.</p>",
+      "<p>POLAROID<br>Blackwood House / The Last Showing / Vacancy</p><p>Built with Three.js. Original worlds, camera, character models and portrait artwork. Surface maps include ambientCG materials by Lennart Demes, used under CC0. Shutter and concrete footstep recordings were supplied for POLAROID. The cinema manager is a fictional message voiced using Windows speech synthesis.</p><p>Bellwether Cinema, Briar Glen Motor Lodge and their characters are fictional.</p>",
     );
   screen.querySelectorAll('a[href*="play=new"]').forEach((link) =>
     link.addEventListener("click", (event) => {

@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { seededRandom } from "../logic.js";
+import { applyPbr } from "../shared/pbr.js";
 
 export function motelFinishes() {
   const random = seededRandom(197411);
@@ -137,5 +138,19 @@ export function motelFinishes() {
     },
     0.006,
   );
+  applyPbr(plaster, "Plaster001", { color: "#bab5a5", normal: 0.28 });
+  applyPbr(wallpaper, "Wallpaper001A", {
+    albedo: false,
+    color: "#d9d1bd",
+    normal: 0.2,
+  });
+  applyPbr(carpet, "Fabric030", { albedo: false, normal: 0.32 });
+  applyPbr(asphalt, "Asphalt033", {
+    color: "#747d86",
+    normal: 0.6,
+    roughness: 0.75,
+  });
+  applyPbr(siding, "Wood066", { albedo: false, color: "#b6c3c7", normal: 0.2 });
+  applyPbr(blanket, "Fabric030", { albedo: false, normal: 0.28 });
   return { plaster, wallpaper, carpet, asphalt, siding, poolTile, blanket };
 }

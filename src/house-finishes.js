@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { seededRandom } from "./logic.js";
+import { applyPbr } from "./shared/pbr.js";
 
 // Blackwood's domestic finishes are local to this chapter. Canvas artwork stays
 // crisp in actual scene photographs and does not depend on external assets.
@@ -140,6 +141,24 @@ export function createHouseFinishes() {
     }),
     roughness: 1,
   });
+  applyPbr(plaster, "Plaster001", { color: "#c5baa7", normal: 0.24 });
+  applyPbr(wallpaper, "Wallpaper001A", {
+    albedo: false,
+    color: "#ddd1bc",
+    normal: 0.2,
+  });
+  applyPbr(joinery, "Wood066", {
+    albedo: false,
+    color: "#d9c9b5",
+    normal: 0.1,
+    roughness: 0.82,
+  });
+  applyPbr(trim, "Plaster001", {
+    color: "#d8cbb2",
+    normal: 0.12,
+    roughness: 0.75,
+  });
+  applyPbr(rug, "Fabric030", { albedo: false, normal: 0.2 });
   return { plaster, wallpaper, joinery, trim, rug };
 }
 

@@ -6,6 +6,8 @@ import { modelTools } from "../shared/model-tools.js";
 import { makeCamera } from "../shared/camera-model.js";
 import { updateObserverAnimation } from "../observer-animation.js";
 import { REGIONS, floorAt, regionAt, navigation } from "./logic.js";
+import { batchStaticScene } from "../shared/batching.js";
+import { applyPbr } from "../shared/pbr.js";
 
 export function buildCinema(scene, state) {
   const mats = {};
@@ -57,6 +59,7 @@ export function buildCinema(scene, state) {
   mats.wall.color.set("#ffffff");
   mats.wall.normalScale.setScalar(0.22);
   ageCinemaMaterials(mats);
+  applyPbr(mats.carpet, "Fabric030", { albedo: false, normal: 0.25 });
   const { box, round, ball, cylinder, sign, mesh, link } = modelTools(
     scene,
     mats,
@@ -154,7 +157,6 @@ export function buildCinema(scene, state) {
   ) {
     const l = new THREE.PointLight(color, power, distance, 1.8);
     l.position.set(x, y, z);
-    scene.add(l);
     lights.push(l);
     ball(
       0.13,
@@ -1265,7 +1267,7 @@ export function buildCinema(scene, state) {
       position[0] === 14 ? 18 : 12,
       12,
     );
-  scene.add(new THREE.HemisphereLight("#b4b6a2", "#36272a", 0.4));
+  scene.add(new THREE.HemisphereLight("#9cacc0", "#30232a", 0.28));
   const dustGeometry = new THREE.BufferGeometry(),
     dustPositions = [];
   for (let i = 0; i < 160; i++)
@@ -1291,8 +1293,51 @@ export function buildCinema(scene, state) {
   scene.add(dust);
   const echo = person(0, 8, "#424a40");
   echo.visible = false;
+  const activeLights = Array.from({ length: 6 }, () => {
+    const light = new THREE.PointLight("#fff1db", 0, 12, 1.8);
+    scene.add(light);
+    return light;
+  });
+  let lightClock = 0,
+    nearest = [];
+  batchStaticScene(scene, [
+    ...occluders,
+    ...Object.values(memories).flat(),
+    ...doors.map((d) => d.leaf),
+    ...reelWheels,
+    ticket,
+    coat,
+    exitCover,
+    screen,
+    beam,
+    staffPhoto,
+  ]);
   let lastFrame = "";
   function update(s, dt, time, player, photo = false) {
+    lightClock -= dt;
+    if (lightClock <= 0 || dt === 0) {
+      lightClock = 0.2;
+      const view = new THREE.Vector3(
+        player.x,
+        (floorAt(player.x, player.z) || 0) + 1.6,
+        player.z,
+      );
+      nearest = [...lights]
+        .sort(
+          (a, b) =>
+            a.position.distanceToSquared(view) -
+            b.position.distanceToSquared(view),
+        )
+        .slice(0, 6);
+    }
+    activeLights.forEach((l, i) => {
+      const source = nearest[i];
+      if (!source) return;
+      l.position.copy(source.position);
+      l.color.copy(source.color);
+      l.intensity = source.intensity * 0.82;
+      l.distance = source.distance;
+    });
     for (const d of doors) {
       const angle = s.doors[d.id] ? d.angle : 0;
       d.leaf.rotation.y =

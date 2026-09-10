@@ -1,14 +1,15 @@
 import * as THREE from "three";
 import { modelTools } from "./model-tools.js";
+import { batchRigidParts } from "./batching.js";
 export function createFigure(scene, mats, kind = "observer") {
   const { mesh, box, round, ball, cylinder, link } = modelTools(scene, mats);
   const g = new THREE.Group(),
     skin = mats.skin.clone();
-  skin.color.set(kind === "woman" ? "#a4afa1" : "#a8ad9c");
+  skin.color.set(kind === "woman" ? "#afa796" : "#b1a796");
   skin.normalScale.setScalar(0.3);
   g.userData.limbs = [];
   const cloth = mats.fabric.clone();
-  cloth.color.set("#30372f");
+  cloth.color.set("#393637");
   cloth.normalScale.setScalar(0.35);
   const torso = mesh(
     new THREE.LatheGeometry(
@@ -58,6 +59,7 @@ export function createFigure(scene, mats, kind = "observer") {
   g.userData.head = head;
   const skullGeometry = new THREE.SphereGeometry(1, 40, 32);
   const vertices = skullGeometry.attributes.position;
+  const faceColours = [];
   for (let i = 0; i < vertices.count; i++) {
     const x = vertices.getX(i) * 0.14,
       y = vertices.getY(i) * 0.225 + 0.18;
@@ -72,13 +74,35 @@ export function createFigure(scene, mats, kind = "observer") {
           -(((Math.abs(x) - 0.076) / 0.025) ** 2) - ((y - 0.13) / 0.04) ** 2,
         ) * 0.02;
       z += Math.exp(-(((y - 0.258) / 0.018) ** 2)) * 0.012;
+      // Fine forehead folds and sunken temples change the surface itself.
+      z += Math.sin(y * 280) * 0.0014 * Math.exp(-(((y - 0.285) / 0.035) ** 2));
     }
     vertices.setXYZ(i, x, y, z);
+    const sockets =
+      z > 0
+        ? Math.exp(
+            -(((Math.abs(x) - 0.054) / 0.037) ** 2) - ((y - 0.205) / 0.04) ** 2,
+          )
+        : 0;
+    const mottling =
+      (Math.sin(x * 173 + y * 91) * Math.sin(z * 137 - y * 76) + 1) * 0.025;
+    faceColours.push(
+      1 - sockets * 0.36 - mottling,
+      1 - sockets * 0.42 - mottling,
+      1 - sockets * 0.4 - mottling,
+    );
   }
+  skullGeometry.setAttribute(
+    "color",
+    new THREE.Float32BufferAttribute(faceColours, 3),
+  );
   skullGeometry.computeVertexNormals();
-  mesh(skullGeometry, skin, 0, 0, 0, head);
+  const faceSkin = skin.clone();
+  faceSkin.vertexColors = true;
+  faceSkin.color.set("#c4b5a7");
+  mesh(skullGeometry, faceSkin, 0, 0, 0, head);
   const bruised = skin.clone();
-  bruised.color.set("#989c8a");
+  bruised.color.set("#807975");
   for (const side of [-1, 1]) {
     ball(0.03, 0.018, 0.012, side * 0.054, 0.214, 0.098, mats.black, head);
 
@@ -182,28 +206,42 @@ export function createFigure(scene, mats, kind = "observer") {
       type: "leg",
     });
   }
-  const hairCap = mesh(
-    new THREE.SphereGeometry(1, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.5),
-    mats.dark,
-    0,
-    0.262,
-    -0.022,
-    head,
-  );
-  hairCap.position.set(0, 0.27, 0);
-  hairCap.scale.set(0.15, 0.15, 0.145);
+  // Hair follows the sculpted skull with a broken hairline, avoiding a separate
+  // hemispherical cap. Strands lie along the scalp before falling at the sides.
+  const scalp = skullGeometry.clone(),
+    hairIndices = [],
+    indices = scalp.index.array;
+  const scalpPosition = scalp.attributes.position;
+  for (let i = 0; i < indices.length; i += 3) {
+    const triangle = Array.from(indices.slice(i, i + 3));
+    if (
+      triangle.every(
+        (v) =>
+          scalpPosition.getY(v) >
+          (scalpPosition.getZ(v) > 0.03 ? 0.306 : 0.18) +
+            Math.sin(scalpPosition.getX(v) * 160) * 0.008,
+      )
+    )
+      hairIndices.push(...triangle);
+  }
+  scalp.setIndex(hairIndices);
+  scalp.scale(1.015, 1.012, 1.02);
+  const hair = mats.dark.clone();
+  hair.color.set("#282321");
+  hair.roughness = 0.94;
+  mesh(scalp, hair, 0, 0, 0, head);
   for (let i = 0; i < 32; i++) {
     const a = (i / 32) * Math.PI * 2,
       xx = Math.sin(a) * 0.12,
       zz = Math.cos(a) * 0.1;
     const curve = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(xx * 0.5, 0.385, zz * 0.5),
-      new THREE.Vector3(xx, 0.285, zz),
+      new THREE.Vector3(xx * 0.5, 0.389, zz * 0.5),
+      new THREE.Vector3(xx, 0.289, zz),
       new THREE.Vector3(xx * 1.12, 0.025 + (i % 3) * 0.04, zz - 0.01),
     ]);
     mesh(
-      new THREE.TubeGeometry(curve, 9, 0.005, 4, false),
-      mats.dark,
+      new THREE.TubeGeometry(curve, 9, 0.0017, 4, false),
+      hair,
       0,
       0,
       0,
@@ -234,5 +272,6 @@ export function createFigure(scene, mats, kind = "observer") {
   g.add(body);
   g.userData.body = body;
   scene.add(g);
+  batchRigidParts(g);
   return g;
 }

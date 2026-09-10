@@ -10,8 +10,8 @@ import { createNavigation } from "../shared/navigation.js";
 import { seededRandom } from "../logic.js";
 import { floorAt, REGIONS, doorUnlocked } from "./logic.js";
 import { motelFinishes } from "./finishes.js";
-import { batchRigidParts } from "./batching.js";
 import { dressMotel } from "./dressing.js";
+import { nightEnvironment } from "../shared/night-environment.js";
 
 export function buildMotel(scene, getState) {
   const rnd = seededRandom(741999),
@@ -732,7 +732,22 @@ export function buildMotel(scene, getState) {
     [3.1, 1.2],
     [12.4, 1.25],
   ]) {
-    box(w, 1.2, 0.07, x, 4.66, -8.88, mats.glass);
+    const windowMaterial = mats.paper.clone();
+    windowMaterial.color.set("#b5a58a");
+    windowMaterial.emissive.set("#e8b875");
+    windowMaterial.emissiveIntensity = x === 12.4 ? 0.12 : 0.65;
+    box(w, 1.2, 0.07, x, 4.66, -8.88, windowMaterial);
+    // Translucent-looking pleats and timber mullions break up the warm panes.
+    for (let fold = 0; fold < 14; fold++)
+      box(
+        0.018,
+        1.17,
+        0.012,
+        x - w / 2 + ((fold + 0.5) * w) / 14,
+        4.66,
+        -8.839,
+        mats.fabric,
+      );
     for (const side of [-1, 1])
       for (let i = 0; i < 6; i++) {
         const c = cylinder(
@@ -753,6 +768,8 @@ export function buildMotel(scene, getState) {
     );
     for (const a of [-w / 2, 0, w / 2])
       box(0.04, 1.22, 0.08, x + a, 4.66, -8.77, mats.trim);
+    for (const y of [4.05, 4.66, 5.27])
+      box(w + 0.08, 0.045, 0.09, x, y, -8.77, mats.trim);
   }
   ceilingLamp(5, 3.1, -11);
   ceilingLamp(-2.5, 3.1, -11);
@@ -966,7 +983,6 @@ export function buildMotel(scene, getState) {
   const child = people(6.8, -0.5, "#9e776d", "audience");
   child.scale.setScalar(0.58);
   child.visible = false;
-  for (const actor of [clerk, mother, father, child]) batchRigidParts(actor);
   dressMotel({
     scene,
     mats,
@@ -1003,7 +1019,7 @@ export function buildMotel(scene, getState) {
       light(x, 2.5, z, 9, true);
     }
   for (const z of [10.8, 12]) chair(12.8, z, -Math.PI / 2);
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 8; i++) {
     const angle = rnd() * Math.PI * 2,
       radius = 24 + rnd() * 35,
       x = Math.cos(angle) * radius,
@@ -1045,11 +1061,11 @@ export function buildMotel(scene, getState) {
     new THREE.LineBasicMaterial({
       color: "#adc3c6",
       transparent: true,
-      opacity: 0.22,
+      opacity: 0.13,
     }),
   );
   scene.add(rain);
-  scene.add(new THREE.HemisphereLight(0x7796ad, 0x302c22, 0.5));
+  scene.add(new THREE.HemisphereLight(0x809ab7, 0x25232a, 0.32));
   const liveLights = Array.from({ length: 6 }, () => {
     const l = new THREE.PointLight(0xffd3a0, 0, 11, 2);
     scene.add(l);
@@ -1058,7 +1074,7 @@ export function buildMotel(scene, getState) {
   const moon = new THREE.DirectionalLight(0x819eae, 0.52);
   moon.position.set(15, 20, 4);
   scene.add(moon);
-  const parkingFill = new THREE.DirectionalLight(0xa6b6b3, 0.42);
+  const parkingFill = new THREE.DirectionalLight(0x8fa9c4, 0.34);
   parkingFill.position.set(3, 10, 19);
   scene.add(parkingFill);
   function syncDoors(dt = 0) {
@@ -1134,9 +1150,11 @@ export function buildMotel(scene, getState) {
     }
     geometries.forEach((g) => g.dispose());
   }
+  const woodland = nightEnvironment(scene);
   let lightTime = -Infinity,
     nearest = [];
   function update(s, dt, t, player, photo = false) {
+    woodland.sky.material.color.setScalar(s.events.departure ? 1.7 : 1);
     syncDoors(dt);
     paintCover.visible = !s.evidence.doorway;
     for (const m of memories) m.visible = photo;

@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { modelTools } from "../shared/model-tools.js";
 import { floorAt } from "./logic.js";
+import { batchRigidParts } from "../shared/batching.js";
 
 export function cinemaCharacters(scene, mats, contactShadow, ground = floorAt) {
   const { mesh, box, round, ball, link, cylinder } = modelTools(scene, mats);
@@ -39,6 +40,7 @@ export function cinemaCharacters(scene, mats, contactShadow, ground = floorAt) {
     g.position.set(x, ground(x, z) || 0, z);
     g.userData.limbs = [];
     g.userData.hands = {};
+    g.userData.human = true;
     const cloth = mats.fabric.clone();
     cloth.color.set(colour);
     cloth.roughness = 0.97;
@@ -61,7 +63,7 @@ export function cinemaCharacters(scene, mats, contactShadow, ground = floorAt) {
           new THREE.Vector2(0.24, 1.47),
           new THREE.Vector2(0.065, 1.58),
         ],
-        16,
+        24,
       ),
       cloth,
       0,
@@ -70,6 +72,17 @@ export function cinemaCharacters(scene, mats, contactShadow, ground = floorAt) {
       body,
     );
     torso.scale.z = 0.72;
+    // Fitted cloth rather than a smooth barrel: compression at the waist and
+    // asymmetric folds across the shoulders remain part of the animated torso.
+    const coatPosition = torso.geometry.attributes.position;
+    for (let i = 0; i < coatPosition.count; i++) {
+      const angle = Math.atan2(coatPosition.getZ(i), coatPosition.getX(i));
+      const y = coatPosition.getY(i),
+        fold = 1 + Math.sin(angle * 9 + y * 13) * 0.025;
+      coatPosition.setX(i, coatPosition.getX(i) * fold);
+      coatPosition.setZ(i, coatPosition.getZ(i) * fold);
+    }
+    torso.geometry.computeVertexNormals();
     // A worn civilian jacket, with a shirt, lapels, pockets and separate trousers.
     const shirtFront = new THREE.BufferGeometry();
     const shirtVertices = [],
@@ -134,12 +147,12 @@ export function cinemaCharacters(scene, mats, contactShadow, ground = floorAt) {
       ball(0.006, 0.006, 0.003, 0, y, 0.145, mats.dark, body);
     cylinder(0.054, 0.14, 0, 1.6, 0, skinBase, body);
     const head = new THREE.Group();
-    head.position.y = 1.65;
+    head.position.y = 1.69;
     body.add(head);
     g.userData.head = head;
     // Shaped anatomy with an original front-projected albedo. The map blends
     // into the scalp at the temples, so no facial features repeat on the back.
-    const faceGeometry = new THREE.SphereGeometry(1, 80, 64);
+    const faceGeometry = new THREE.SphereGeometry(1, 48, 36);
     const vertices = faceGeometry.attributes.position;
     const colours = [],
       weights = [],
@@ -175,9 +188,9 @@ export function cinemaCharacters(scene, mats, contactShadow, ground = floorAt) {
         ny = vertices.getY(i),
         nz = vertices.getZ(i);
       const y = 0.065 + ny * 0.155;
-      const x =
-        nx * 0.104 * (1 + 0.12 * Math.exp(-(((ny + 0.55) / 0.25) ** 2)));
-      const front = THREE.MathUtils.smoothstep(nz, 0.05, 0.72);
+      const jaw = 0.72 + 0.28 * THREE.MathUtils.smoothstep(ny, -0.95, -0.28);
+      const x = nx * 0.112 * jaw;
+      const front = THREE.MathUtils.smoothstep(nz, -0.08, 0.64);
       const nose = gaussian(x, y, 0, 0.052, 0.014, 0.031);
       const sockets =
         gaussian(x, y, -0.039, 0.1, 0.025, 0.018) +
@@ -187,10 +200,13 @@ export function cinemaCharacters(scene, mats, contactShadow, ground = floorAt) {
         gaussian(x, y, 0.065, 0.045, 0.031, 0.027);
       let z =
         nz * 0.105 + front * (0.044 * nose - 0.009 * sockets + 0.008 * cheek);
-      const hairline = 0.005 + 0.16 * THREE.MathUtils.smoothstep(nz, -0.5, 0.5);
+      const hairline =
+        0.015 +
+        0.135 * THREE.MathUtils.smoothstep(nz, -0.5, 0.5) +
+        0.014 * Math.cos(nx * 3.5);
       const hair =
         THREE.MathUtils.smoothstep(y, hairline - 0.01, hairline + 0.006) *
-        (1 - front);
+        (1 - front * 0.45);
       colours.push(1 - hair * 0.78, 1 - hair * 0.79, 1 - hair * 0.8);
       weights.push(front);
       const u = THREE.MathUtils.clamp(0.5 + x / 0.31, 0, 1),
@@ -214,8 +230,8 @@ export function cinemaCharacters(scene, mats, contactShadow, ground = floorAt) {
     const skin = new THREE.MeshStandardMaterial({
       map: role === "patron" ? faceMap : castMap,
       vertexColors: true,
-      roughness: 0.94,
-      color: "#d2c6b8",
+      roughness: 0.84,
+      color: "#cab6a3",
     });
     skin.onBeforeCompile = (shader) => {
       shader.vertexShader =
@@ -229,10 +245,10 @@ export function cinemaCharacters(scene, mats, contactShadow, ground = floorAt) {
         "varying float vFaceWeight;\n" + shader.fragmentShader;
       shader.fragmentShader = shader.fragmentShader.replace(
         "#include <map_fragment>",
-        "#ifdef USE_MAP\nvec4 faceTexel=texture2D(map,vMapUv);\ndiffuseColor.rgb*=mix(vec3(.43,.30,.22),faceTexel.rgb,vFaceWeight);\n#endif",
+        "#ifdef USE_MAP\nvec4 faceTexel=texture2D(map,vMapUv);\ndiffuseColor.rgb*=mix(vec3(.36,.235,.165),faceTexel.rgb,vFaceWeight);\n#endif",
       );
     };
-    skin.customProgramCacheKey = () => "cinema-face-v2";
+    skin.customProgramCacheKey = () => "cinema-face-v3";
     const face = mesh(faceGeometry, skin, 0, 0, 0, head);
     face.name = "human-face";
     if (role === "ada") {
@@ -255,11 +271,53 @@ export function cinemaCharacters(scene, mats, contactShadow, ground = floorAt) {
       const arm = new THREE.Group();
       arm.position.set(side * 0.23, 1.43, 0);
       body.add(arm);
-      link([0, 0, 0], [side * 0.04, -0.32, 0], 0.075, cloth, arm);
+      ball(0.08, 0.078, 0.078, 0, 0, 0, cloth, arm);
+      const sleeve = (parent, length, radii, offset) => {
+        const points = radii.map(
+          (r, i) => new THREE.Vector2(r, (length * i) / (radii.length - 1)),
+        );
+        const part = mesh(
+          new THREE.LatheGeometry(points, 18),
+          cloth,
+          0,
+          0,
+          0,
+          parent,
+        );
+        part.quaternion.setFromUnitVectors(
+          new THREE.Vector3(0, 1, 0),
+          new THREE.Vector3(...offset).normalize(),
+        );
+        return part;
+      };
+      sleeve(
+        arm,
+        0.324,
+        [0.077, 0.082, 0.078, 0.07, 0.066, 0.064, 0.067, 0.062],
+        [side * 0.04, -0.32, 0],
+      );
       const elbow = new THREE.Group();
       elbow.position.set(side * 0.04, -0.32, 0);
       arm.add(elbow);
-      link([0, 0, 0], [side * 0.025, -0.3, 0.015], 0.059, cloth, elbow);
+      sleeve(
+        elbow,
+        0.302,
+        [0.062, 0.067, 0.058, 0.057, 0.049, 0.053, 0.046],
+        [side * 0.025, -0.3, 0.015],
+      );
+      // A thin shirt cuff and the jacket's sleeve buttons read at arm's length.
+      cylinder(0.047, 0.018, side * 0.025, -0.31, 0.015, shirt, elbow);
+      for (let button = 0; button < 3; button++)
+        ball(
+          0.004,
+          0.005,
+          0.002,
+          side * 0.045,
+          -0.25 - button * 0.016,
+          0.053,
+          mats.dark,
+          elbow,
+        );
       const hand = new THREE.Group();
       g.userData.hands[side] = hand;
       elbow.add(hand);
@@ -338,6 +396,7 @@ export function cinemaCharacters(scene, mats, contactShadow, ground = floorAt) {
           elbow,
         );
         g.userData.watch = watch;
+        watch.userData.keepMesh = true;
         for (let stitch = 0; stitch < 6; stitch++)
           link(
             [0.007 + stitch * 0.008, -0.22, 0.067],
@@ -379,6 +438,7 @@ export function cinemaCharacters(scene, mats, contactShadow, ground = floorAt) {
         side,
       });
     }
+    batchRigidParts(g);
     return g;
   };
   create.ready = Promise.all([faceReady, castReady]);
