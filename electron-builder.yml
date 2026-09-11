@@ -1,0 +1,32 @@
+appId: com.stillhere.polaroid
+productName: POLAROID
+directories:
+  output: release
+  buildResources: desktop
+files:
+  - dist/**/*
+  - desktop/*.cjs
+  - desktop/icon.png
+  - package.json
+  - "!node_modules/**/*"
+asar: true
+npmRebuild: false
+win:
+  icon: desktop/icon.ico
+  target:
+    - target: portable
+      arch: [x64]
+    - target: nsis
+      arch: [x64]
+portable:
+  artifactName: POLAROID-${version}-Windows-Portable.exe
+nsis:
+  artifactName: POLAROID-${version}-Windows-Setup.exe
+  oneClick: false
+  perMachine: false
+  allowElevation: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: POLAROID
+  deleteAppDataOnUninstall: false

@@ -27,14 +27,23 @@
     "test:vacancy": "node scripts/vacancy.mjs",
     "test:vacancy-systems": "node scripts/vacancy-systems.mjs",
     "test:vacancy-polish": "node scripts/vacancy-polish.mjs",
-    "test:cinema-interruptions": "node scripts/cinema-interruptions.mjs"
+    "test:cinema-interruptions": "node scripts/cinema-interruptions.mjs",
+    "desktop": "npm run build && node scripts/start-desktop.mjs",
+    "desktop:pack": "npm run build && electron-builder --win --x64 --dir --publish never",
+    "desktop:dist": "npm run build && electron-builder --win --x64 --publish never",
+    "test:desktop": "node scripts/desktop.mjs"
   },
   "dependencies": {
     "three": "0.180.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.1",
+    "electron": "44.3.0",
+    "electron-builder": "26.15.3",
     "prettier": "^3.6.2",
     "vite": "7.1.7"
-  }
+  },
+  "description": "An anthology of impossible photographs. Three first-person psychological horror stories.",
+  "author": "STILL / HERE",
+  "main": "desktop/main.cjs"
 }

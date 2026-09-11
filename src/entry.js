@@ -4,8 +4,10 @@ import "./anthology.css";
 import "./presentation.css";
 import "./shared/fullscreen.js";
 import { preloadPbr } from "./shared/pbr.js";
+import { openSaveMenu } from "./shared/save-menu.js";
 const chapter = new URLSearchParams(location.search).get("chapter");
-if (["blackwood", "last-showing", "vacancy"].includes(chapter)) await preloadPbr();
+if (["blackwood", "last-showing", "vacancy"].includes(chapter))
+  await preloadPbr();
 if (chapter === "blackwood") await import("./main.js");
 else if (chapter === "last-showing") await import("./cinema/game.js");
 else if (chapter === "vacancy") await import("./vacancy/game.js");
@@ -29,6 +31,18 @@ else {
 <article class="chapter-card blackwood selected" data-chapter="blackwood"><button class="chapter-name" aria-pressed="true"><small>CHAPTER 01</small><h2>BLACKWOOD HOUSE</h2></button><p>Return to the house that remembers you.</p><small class="chapter-progress">${complete.blackwood ? "STORY COMPLETED" : blackwood ? "SAVED STORY / " + Object.keys(blackwood.evidence || {}).length + " OF 4 MEMORIES" : "YOUR STORY BEGINS HERE"}</small><div class="chapter-actions"><a href="?chapter=blackwood&play=new">NEW STORY &#8599;</a>${blackwood ? '<a href="?chapter=blackwood&play=continue">CONTINUE &#8594;</a>' : "<button disabled>CONTINUE</button>"}</div></article>
 <article class="chapter-card cinema" data-chapter="cinema"><button class="chapter-name" aria-pressed="false"><small>CHAPTER 02</small><h2>THE LAST SHOWING</h2></button><p>A closing shift. An empty cinema. One last patron.</p><small class="chapter-progress">${cinema?.completed ? "STORY COMPLETED" : cinema ? "SAVED STORY" : "BELLWETHER CINEMA / ADMIT ONE"}</small><div class="chapter-actions"><a href="?chapter=last-showing&play=new">NEW STORY &#8599;</a>${cinema && !cinema.completed ? '<a href="?chapter=last-showing&play=continue">CONTINUE &#8594;</a>' : "<button disabled>CONTINUE</button>"}</div></article></section><footer><span>HEADPHONES RECOMMENDED</span><span><button id="anthology-settings">SETTINGS</button> / <button id="anthology-credits">CREDITS</button></span></footer>`;
   document.body.append(screen);
+  const savesButton = document.createElement("button");
+  savesButton.id = "anthology-saves";
+  savesButton.textContent = "SAVES";
+  savesButton.onclick = () => openSaveMenu(anthologyPanel);
+  screen.querySelector("footer > span:last-child").prepend(savesButton, " / ");
+  if (window.polaroidDesktop) {
+    const quitButton = document.createElement("button");
+    quitButton.textContent = "QUIT GAME";
+    quitButton.id = "desktop-quit";
+    quitButton.onclick = () => window.polaroidDesktop.quit();
+    screen.querySelector("footer > span:last-child").append(" / ", quitButton);
+  }
   const motelBackground = document.createElement("img");
   motelBackground.dataset.background = "vacancy";
   motelBackground.src = "/chapter-art/vacancy.jpg";

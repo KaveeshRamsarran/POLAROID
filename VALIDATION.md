@@ -1,5 +1,14 @@
 # Validation
 
+## Electron desktop / 10 September 2026
+
+- Windows x64 Electron 44.3.0 portable executable and NSIS installer built using electron-builder 26.15.3. Both contain the offline production game. No release was uploaded. The installer is unsigned and has not been installed/uninstalled on a clean Windows machine.
+- Packaged `win-unpacked/POLAROID.exe`: all three chapters launch, render and capture photographs; independent saves survive chapter switching, export/import and app restart. Closing the native window during Vacancy preserves the latest photograph. Shared effects settings persist. Pointer lock and native fullscreen were exercised. The renderer has no Node globals and runs sandboxed with context isolation.
+- Actual portable executable: extraction, offline anthology launch, playable Vacancy, photographic capture, saved progress and normal Quit tested through a temporary loopback debugging connection. The extraction wrapper cannot be driven with the unpacked app's inspector-pipe launcher, so `scripts/portable.mjs` tests it separately.
+- Active WebGL renderer is NVIDIA GeForce RTX 3060 / ANGLE Direct3D11. Short 120-frame samples in each chapter measured 10.0 ms median and 10.1 ms p95 at the test window size. These are local, mostly stationary samples, not a guarantee on other machines or a sustained stress benchmark. Raw output is in `artifacts/desktop-validation.json`.
+- 47 unit tests pass, including path confinement, unchanged save-schema round trips, selective restore, malformed backup rejection and rollback after quota failure. Browser backup download and selective restore pass. Existing chapter gameplay modules and save schemas were not rewritten for Electron.
+- The browser production build and Windows browser launcher remain available. Save transfer is opt-in through the anthology's Saves screen; tests use disposable profiles, never the user's existing browser or desktop progress.
+
 ## Shared visual overhaul / 10 September 2026
 
 - All three chapters use the new material/presentation pass. Six ambientCG CC0 sets provide local 1024px colour, OpenGL normal and roughness maps. Re-encoding reduced the eighteen maps from 20,740,941 to 5,382,007 bytes. Materials retain independent repeat/offset transforms while sharing decoded images and GPU sources. Provenance is included in `public/textures/pbr/LICENSE.txt`.

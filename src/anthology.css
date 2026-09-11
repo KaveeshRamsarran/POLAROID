@@ -398,3 +398,17 @@
 .cinema .chapter-art img {
   filter: saturate(0.75) brightness(1.05);
 }
+
+.save-transfer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  margin: 20px 0;
+}
+#save-preview .setting {
+  gap: 16px;
+}
+#save-status {
+  color: #ded2b6;
+}

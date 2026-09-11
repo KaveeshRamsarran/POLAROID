@@ -2,7 +2,11 @@
 
 ![POLAROID anthology](artifacts/anthology.png)
 
-A playable first-person psychological horror anthology for desktop browsers. Choose **Chapter 01 - Blackwood House**, **Chapter 02 - The Last Showing** or **Chapter 03 - Vacancy** in the same POLAROID application. All three share its tactile camera, sculpted player hand, photographic identity and settings, with separate story saves.
+A playable first-person psychological horror anthology for Windows desktop and desktop browsers. Choose **Chapter 01 - Blackwood House**, **Chapter 02 - The Last Showing** or **Chapter 03 - Vacancy** in the same POLAROID application. All three share its tactile camera, sculpted player hand, photographic identity and settings, with separate story saves.
+
+## Windows desktop game
+
+Build with `npm run desktop:dist` to create a portable Windows executable and installer in `release/`. Players can double-click the executable and play offline without Node.js or a browser. Run `npm run desktop` for local development. **Saves** in story selection exports/imports chapter progress and photographs between browser and desktop profiles. See [desktop downloads, save transfer and build instructions](docs/DESKTOP.md).
 
 ## Visual presentation
 

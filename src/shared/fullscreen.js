@@ -4,22 +4,26 @@ const button = document.createElement("button");
 button.id = "fullscreen-button";
 button.type = "button";
 document.body.append(button);
+const desktop = window.polaroidDesktop;
+let desktopActive = false;
 function refresh() {
-  const active = !!document.fullscreenElement;
+  const active = desktop ? desktopActive : !!document.fullscreenElement;
   button.textContent = active ? "↙ EXIT FULLSCREEN" : "↗ FULLSCREEN";
   button.setAttribute(
     "aria-label",
     active ? "Exit fullscreen" : "Enter fullscreen",
   );
   button.setAttribute("aria-pressed", String(active));
-  button.disabled = !document.fullscreenEnabled;
-  button.title = document.fullscreenEnabled
-    ? ""
-    : "Fullscreen is unavailable in this browser";
+  button.disabled = !desktop && !document.fullscreenEnabled;
+  button.title =
+    desktop || document.fullscreenEnabled
+      ? ""
+      : "Fullscreen is unavailable in this browser";
 }
 button.onclick = async () => {
   try {
-    if (document.fullscreenElement) await document.exitFullscreen();
+    if (desktop) desktopActive = await desktop.toggleFullscreen();
+    else if (document.fullscreenElement) await document.exitFullscreen();
     else await document.documentElement.requestFullscreen();
   } catch {
     button.title =
@@ -28,4 +32,14 @@ button.onclick = async () => {
   refresh();
 };
 document.addEventListener("fullscreenchange", refresh);
+if (desktop) {
+  desktop.fullscreen().then((active) => {
+    desktopActive = active;
+    refresh();
+  });
+  desktop.onFullscreenChanged((active) => {
+    desktopActive = active;
+    refresh();
+  });
+}
 refresh();
